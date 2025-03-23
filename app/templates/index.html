@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Flask Streaming App</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Welcome to the Flask Streaming App!</h1>
+        <p class="text-center">This is the home page. You can stream content from the <a href="/stream">Stream</a> page.
+        </p>
+
+        <hr>
+
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h3 class="mb-3">Select an Application</h3>
+                <form action="/select-app" method="POST">
+                    <div class="form-group">
+                        {% for app in curr_apps %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="application" id="app{{ loop.index }}"
+                                value="{{ app }}" required>
+                            <label class="form-check-label" for="app{{ loop.index }}">
+                                {{ app }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Selection</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>
