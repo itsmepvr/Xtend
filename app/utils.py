@@ -1,6 +1,11 @@
 import platform
 import subprocess
-import psutil
+import threading
+import re
+import time
+import cv2
+import mss
+import numpy as np
 
 def get_open_applications():
     system = platform.system()
@@ -95,5 +100,174 @@ def get_open_applications():
 
     return sorted(processed_apps)
 
+
+class AppCapturer:
+    def __init__(self, app_name):
+        self.app_name = app_name
+        self.running = False
+        self.frame = None
+        self.capture_thread = None
+        self.system = platform.system()
+        self.geometry = None
+
+    def find_window_geometry(self):
+        """Find application window geometry for current platform"""
+        if self.system == 'Windows':
+            return self._find_window_windows()
+        elif self.system == 'Darwin':
+            return self._find_window_mac()
+        elif self.system == 'Linux':
+            return self._find_window_linux()
+        return None
+
+    def start_capture(self):
+        """Start capturing frames in background thread"""
+        self.geometry = self.find_window_geometry()
+        print(self.geometry)
+        if not self.geometry:
+            raise RuntimeError("Could not find application window")
+        
+        self.running = True
+        self.capture_thread = threading.Thread(target=self._capture_loop)
+        self.capture_thread.start()
+
+    def stop_capture(self):
+        """Stop capturing frames"""
+        self.running = False
+        if self.capture_thread:
+            self.capture_thread.join()
+
+    def _capture_loop(self):
+        """Main capture loop using MSS"""
+        with mss.mss() as sct:
+            monitor = {
+                "top": self.geometry['top'],
+                "left": self.geometry['left'],
+                "width": self.geometry['width'],
+                "height": self.geometry['height']
+            }
+            sct.shot(output="test.png")
+
+            while self.running:
+                try:
+                    img = sct.grab(monitor)
+                    self.frame = cv2.cvtColor(np.array(img), cv2.COLOR_BGRA2BGR)
+                except Exception as e:
+                    print(f"Capture error: {e}")
+                time.sleep(0.033)  # ~30 FPS
+
+    # Windows implementation
+    def _find_window_windows(self):
+        import win32gui
+        import win32con
+        import win32api
+
+        def callback(hwnd, extra):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if self.app_name.lower() in title.lower():
+                    rect = win32gui.GetWindowRect(hwnd)
+                    extra.append({
+                        'left': rect[0],
+                        'top': rect[1],
+                        'width': rect[2] - rect[0],
+                        'height': rect[3] - rect[1],
+                        'hwnd': hwnd
+                    })
+            return True
+
+        windows = []
+        win32gui.EnumWindows(callback, windows)
+        
+        if not windows:
+            return None
+
+        # Bring window to front
+        hwnd = windows[0]['hwnd']
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        win32gui.SetForegroundWindow(hwnd)
+
+        return windows[0]
+
+    # macOS implementation
+    def _find_window_mac(self):
+        script = f'''
+        tell application "System Events"
+            set appProcess to first process whose name is "{self.app_name}"
+            set windowPos to position of first window of appProcess
+            set windowSize to size of first window of appProcess
+            return {{windowPos, windowSize}}
+        end tell
+        '''
+        
+        try:
+            result = subprocess.check_output(['osascript', '-e', script]).decode()
+            numbers = list(map(int, re.findall(r'\d+', result)))
+            
+            if len(numbers) >= 4:
+                # Adjust for retina displays
+                scale_factor = subprocess.check_output([
+                    'system_profiler', 'SPDisplaysDataType'
+                ]).decode()
+                scale = 2 if 'Retina' in scale_factor else 1
+                
+                return {
+                    'left': numbers[0] // scale,
+                    'top': numbers[1] // scale,
+                    'width': numbers[2] // scale,
+                    'height': numbers[3] // scale
+                }
+        except Exception as e:
+            print(f"macOS window detection failed: {e}")
+        return None
+
+    # Linux implementation
+    def _find_window_linux(self):
+        try:
+            # Get window ID using wmctrl (more reliable)
+            output = subprocess.check_output(
+                ['wmctrl', '-l'], timeout=5).decode()
+            window_lines = [line for line in output.split('\n') 
+                        if self.app_name in line]
+            if not window_lines:
+                return None
+
+            # Get the first matching window ID
+            window_id = window_lines[0].split()[0]
+
+            # Get geometry using xwininfo
+            xwininfo = subprocess.check_output(
+                ['xwininfo', '-id', window_id], timeout=5).decode()
+
+            # Extract absolute coordinates
+            abs_x = int(re.search(r'Absolute upper-left X:\s+(\d+)', xwininfo).group(1))
+            abs_y = int(re.search(r'Absolute upper-left Y:\s+(\d+)', xwininfo).group(1))
+            
+            # Extract window dimensions
+            width = int(re.search(r'Width:\s+(\d+)', xwininfo).group(1))
+            height = int(re.search(r'Height:\s+(\d+)', xwininfo).group(1))
+
+            # Adjust for multi-monitor setups
+            screen_info = subprocess.check_output(['xrandr']).decode()
+            primary_screen = [line for line in screen_info.split('\n') 
+                            if ' connected primary' in line][0]
+            screen_x = int(re.search(r'primary (\d+)x(\d+)\+(\d+)\+(\d+)', 
+                                primary_screen).group(3))
+
+            return {
+                'left': abs_x - screen_x,  # Adjust for primary monitor offset
+                'top': abs_y,
+                'width': width,
+                'height': height
+            }
+        except Exception as e:
+            print(f"Linux window detection failed: {e}")
+            return None
+
 if __name__ == '__main__':
     print("Open applications:", get_open_applications())
+
+    ap = AppCapturer('Google Chrome')
+    ap.start_capture()
+    print(ap.frame)

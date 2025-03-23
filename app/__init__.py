@@ -6,6 +6,8 @@ def create_app():
     # Initialize Flask app
     app = Flask(__name__)
 
+    app_sessions = {}
+
     # Set up middleware (for example, logging or simple error handling)
     @app.before_request
     def before_request():
@@ -20,6 +22,6 @@ def create_app():
     CORS(app)
 
     # Register routes
-    setup_routes(app)
+    setup_routes(app, app_sessions)
 
     return app

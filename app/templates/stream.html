@@ -1,0 +1,14 @@
+<!-- templates/stream.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Application Stream</title>
+</head>
+
+<body>
+    <h1>Live Application Stream</h1>
+    <img src="{{ url_for('video_feed', session_id=session_id) }}" style="width: 80%; height: auto;">
+</body>
+
+</html>
