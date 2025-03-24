@@ -1,14 +1,125 @@
-<!-- templates/stream.html -->
 <!DOCTYPE html>
 <html>
 
 <head>
     <title>Application Stream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            padding: 10px;
+            height: 50px;
+            /* Adjust height of header */
+            flex-shrink: 0;
+            /* Prevent header from shrinking */
+        }
+
+        .stream-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #stream-img {
+            max-width: 100%;
+            max-height: calc(100vh - 50px);
+            /* Subtract header height */
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            /* Preserve aspect ratio */
+        }
+
+        .fullscreen-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Full-Screen Mode */
+        .fullscreen-mode body {
+            background-color: black;
+        }
+
+        .fullscreen-mode .stream-container {
+            height: 100vh;
+        }
+
+        .fullscreen-mode #stream-img {
+            max-width: 100vw;
+            max-height: 100vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            /* Preserve aspect ratio */
+        }
+
+        .fullscreen-mode h1 {
+            display: none;
+        }
+
+        .fullscreen-mode .fullscreen-button {
+            /* position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 0, 0, 0.7); */
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
     <h1>Live Application Stream</h1>
-    <img src="{{ url_for('video_feed', session_id=session_id) }}" style="width: 80%; height: auto;">
+    <div class="stream-container">
+        <img id="stream-img" src="{{ url_for('video_feed', session_id=session_id) }}">
+    </div>
+    <button class="fullscreen-button" onclick="toggleFullScreen()">Full Screen</button>
+
+    <script>
+        function toggleFullScreen() {
+            let body = document.body;
+            let btn = document.querySelector(".fullscreen-button");
+
+            if (!document.fullscreenElement) {
+                body.classList.add("fullscreen-mode");
+                if (body.requestFullscreen) {
+                    body.requestFullscreen();
+                }
+                btn.innerText = "Exit Full Screen";
+            } else {
+                body.classList.remove("fullscreen-mode");
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+                btn.innerText = "Full Screen";
+            }
+        }
+    </script>
 </body>
 
 </html>
