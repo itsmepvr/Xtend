@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+# Trigger workflow on push to dev branch, or when PR is made to master
+on:
+  push:
+    branches:
+      - dev
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  # Job to run tests
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2 # Checkout the code to the runner
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.11" # Use your desired Python version
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Tests
+        run: |
+          pytest
+
+  # Job to deploy the app (this can be customized to your needs)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test # Make sure tests pass before deploying
+    if: github.ref == 'refs/heads/master' # Only deploy on push to master
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.11" # Use your desired Python version
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build App
+        run: |
+          # You can add your build steps here (e.g., Docker build, compiling assets)
+          echo "Building the app..."
+
+      - name: Deploy to Server
+        run: |
+          # Add your deployment commands here, for example using SSH or a deployment script.
+          # Example:
+          # ssh user@server "cd /path/to/app && git pull && ./deploy.sh"
+          echo "Deploying to production server..."

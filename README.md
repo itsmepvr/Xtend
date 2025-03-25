@@ -42,7 +42,7 @@ Ensure that you have the necessary dependencies for screen capturing:
 - **For Linux**: Install Xlib and Composite extension packages.
 
   ```bash
-  sudo apt-get install libx11-dev libxcomposite-dev
+  sudo apt-get install wmctrl x11-utils xrandr libxcomposite-dev libxrender-dev
   ```
 
 - **For macOS**: Ensure that you have the appropriate libraries for screen capturing and display.

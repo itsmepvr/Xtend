@@ -1,27 +1,26 @@
+import logging
 from flask import Flask
-from flask_cors import CORS  # Import CORS for cross-origin support
-from app.routes import setup_routes
+from flask_cors import CORS
 
-def create_app():
-    # Initialize Flask app
-    app = Flask(__name__)
 
-    app_sessions = {}
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("app.log")
+    ]
+)
 
-    # Set up middleware (for example, logging or simple error handling)
-    @app.before_request
-    def before_request():
-        print("A request is being made!")
+# Create a logger instance
+logger = logging.getLogger(__name__)
 
-    @app.after_request
-    def after_request(response):
-        print("Request processed")
-        return response
+# Flask App initialization
+app = Flask(__name__)
+CORS(app)
 
-    # Enable CORS for all routes (you can configure this as needed)
-    CORS(app)
+# Application sessions store
+app_sessions = {}
 
-    # Register routes
-    setup_routes(app, app_sessions)
-
-    return app
+from app import views
