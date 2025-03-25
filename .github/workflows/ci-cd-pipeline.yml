@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install wmctrl x11-utils xrandr libxcomposite-dev libxrender-dev
+          sudo apt-get install wmctrl x11-utils libxcomposite-dev libxrender-dev
 
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV # Set PYTHONPATH dynamically
