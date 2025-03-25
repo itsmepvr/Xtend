@@ -1,25 +1,29 @@
+"""Flask app initialization with logging and CORS configuration."""
+
+import logging
 from flask import Flask
-from flask_cors import CORS  # Import CORS for cross-origin support
-from app.routes import setup_routes
+from flask_cors import CORS
 
-def create_app():
-    # Initialize Flask app
-    app = Flask(__name__)
 
-    # Set up middleware (for example, logging or simple error handling)
-    @app.before_request
-    def before_request():
-        print("A request is being made!")
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("app.log")
+    ]
+)
 
-    @app.after_request
-    def after_request(response):
-        print("Request processed")
-        return response
+# Create a logger instance
+logger = logging.getLogger(__name__)
+logger.info("Starting Flask application...")
 
-    # Enable CORS for all routes (you can configure this as needed)
-    CORS(app)
+# Flask App initialization
+app = Flask(__name__)
+CORS(app)
 
-    # Register routes
-    setup_routes(app)
+# Application sessions store
+app_sessions: dict = {}
 
-    return app
+from app import views # pylint: disable=wrong-import-position

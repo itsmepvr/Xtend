@@ -1,56 +1,71 @@
+"""Module to retrieve currently open applications across different OS platforms."""
+
 import platform
 import subprocess
-import psutil
 
-def get_open_applications():
+try:
+    import psutil  # Used for Linux process retrieval
+except ImportError:
+    psutil = None
+
+def get_open_applications() -> list[str]:
+    """Retrieves a list of currently open applications.
+
+    Returns:
+        list[str]: A sorted list of open application names.
+    """
     system = platform.system()
-    apps = set()
+    apps: set[str] = set()
 
     if system == 'Windows':
         import ctypes
         from ctypes import wintypes
 
         user32 = ctypes.windll.user32
-        EnumWindows = user32.EnumWindows
-        EnumWindowsProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-        GetWindowThreadProcessId = user32.GetWindowThreadProcessId
-        IsWindowVisible = user32.IsWindowVisible
-        GetWindowTextW = user32.GetWindowTextW
-        GetWindowTextLengthW = user32.GetWindowTextLengthW
+        enum_windows = user32.EnumWindows  # Changed to snake_case
+        enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        is_window_visible = user32.IsWindowVisible
+        get_window_text_w = user32.GetWindowTextW
+        get_window_text_length_w = user32.GetWindowTextLengthW
 
-        def enum_window_callback(hwnd, lParam):
-            if IsWindowVisible(hwnd):
-                # Get window title
-                length = GetWindowTextLengthW(hwnd)
+        def enum_window_callback(hwnd, _):
+            """Callback function for EnumWindows to fetch visible window titles."""
+            if is_window_visible(hwnd):
+                length = get_window_text_length_w(hwnd)
                 if length > 0:
                     buff = ctypes.create_unicode_buffer(length + 1)
-                    GetWindowTextW(hwnd, buff, length + 1)
-                    title = buff.value
+                    get_window_text_w(hwnd, buff, length + 1)
+                    title = buff.value.strip()
                     if title:
-                        # Extract potential app name from title
-                        parts = [p.strip() for p in title.split(' - ')]
-                        apps.add(parts[-1])
+                        parts = title.split(' - ')
+                        apps.add(parts[-1].strip())
+
             return True
 
-        EnumWindows(EnumWindowsProc(enum_window_callback), 0)
+        enum_windows(enum_windows_proc(enum_window_callback), 0)
 
     elif system == 'Darwin':
-        script = 'tell application "System Events" to get the name of every process where background only is false'
+        script = 'tell application "System Events" to get the name of every process where ' \
+        'background only is false'
         try:
-            output = subprocess.check_output(['osascript', '-e', script]).decode('utf-8').strip()
-            apps = set(output.split(', '))
+            output = subprocess.check_output(['osascript', '-e', script], text=True).strip()
+            if output:
+                apps.update(output.split(', '))
         except subprocess.CalledProcessError:
             pass
 
     elif system == 'Linux':
-        try:  # Try Xlib method first
+        try:
             from Xlib import display, X
             from Xlib.Xatom import _NET_CLIENT_LIST, _NET_WM_PID
-            
+
+            if not psutil:
+                raise ImportError("psutil module is required for Linux application retrieval.")
+
             d = display.Display()
             root = d.screen().root
             client_list = root.get_full_property(_NET_CLIENT_LIST, X.AnyPropertyType)
-            
+
             if client_list:
                 for win_id in client_list.value:
                     window = d.create_resource_object('window', win_id)
@@ -62,20 +77,21 @@ def get_open_applications():
                             apps.add(process.name())
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
+
         except ImportError:
-            try:  # Fallback to wmctrl
-                output = subprocess.check_output(['wmctrl', '-l']).decode('utf-8')
+            try:
+                output = subprocess.check_output(['wmctrl', '-l'], text=True)
                 for line in output.splitlines():
                     parts = line.split(maxsplit=3)
                     if len(parts) > 3:
-                        title = parts[3]
-                        # Extract potential app name from title
-                        clean_parts = [p.strip() for p in title.split(' - ')]
-                        apps.add(clean_parts[-1])
+                        title = parts[3].strip()
+                        clean_parts = title.split(' - ')
+                        apps.add(clean_parts[-1].strip())
+
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
 
-    # Common processing and mapping
+    # Common mapping for app normalization
     app_mapping = {
         'chrome': 'Google Chrome',
         'chrome.exe': 'Google Chrome',
@@ -83,14 +99,12 @@ def get_open_applications():
         'code.exe': 'Visual Studio Code',
         'Code': 'Visual Studio Code'
     }
-    
-    processed_apps = set()
+
+    processed_apps: set[str] = set()
     for app in apps:
-        # Try to find in mapping first
         normalized = app_mapping.get(app, app)
-        # Additional check for split results
-        parts = [p.strip() for p in normalized.split(' - ')]
-        final_name = app_mapping.get(parts[-1], parts[-1])
+        parts = normalized.split(' - ')
+        final_name = app_mapping.get(parts[-1].strip(), parts[-1].strip())
         processed_apps.add(final_name)
 
     return sorted(processed_apps)

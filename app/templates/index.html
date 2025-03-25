@@ -6,16 +6,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to Flask Streaming App</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        .session-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container mt-5">
         <h1 class="text-center">Welcome to the Flask Streaming App!</h1>
-        <p class="text-center">This is the home page. You can stream content from the <a href="/stream">Stream</a> page.
-        </p>
 
         <hr>
 
+        <!-- Active Sessions -->
+        {% if active_sessions %}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <h3 class="mb-3">Active Sessions</h3>
+                {% for session_id, session in active_sessions.items() %}
+                <div class="session-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5>{{ session.app_name }}</h5>
+                            <a href="/stream/{{ session_id }}" target="_blank">{{ session_id }}</a>
+                        </div>
+                        <form action="/close-session" method="POST">
+                            <input type="hidden" name="session_id" value="{{ session_id }}">
+                            <button type="submit" class="btn btn-danger">Close Session</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+
+        <!-- Application Selection Form -->
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <h3 class="mb-3">Select an Application</h3>
@@ -31,10 +61,12 @@
                         </div>
                         {% endfor %}
                     </div>
-                    <button type="submit" class="btn btn-primary">Submit Selection</button>
+                    <button type="submit" class="btn btn-primary">Start Streaming Session</button>
                 </form>
             </div>
         </div>
+
+        {% endif %}
 
     </div>
 </body>
