@@ -1,4 +1,5 @@
 "Pytest Test Cases"
+# pylint: disable=cyclic-import
 import unittest
 from app import app, app_sessions
 
