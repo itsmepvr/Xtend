@@ -1,3 +1,4 @@
+"Module to capture app screen"
 import subprocess
 import threading
 import time
@@ -9,7 +10,7 @@ from Xlib.error import XError
 
 class AppCapturer:
     """Captures the screen of a specific application window using X11 and Composite extension."""
-    
+
     def __init__(self, app_name: str):
         """Initialize the AppCapturer with the application name."""
         self.app_name = app_name
@@ -67,12 +68,13 @@ class AppCapturer:
             while self.running:
                 try:
                     geom = self.window.get_geometry()
-                    image = self.window.get_image(0, 0, geom.width, geom.height, X.ZPixmap, 0xffffffff)
+                    image = self.window.get_image(0, 0, geom.width,
+                                        geom.height, X.ZPixmap, 0xffffffff)
 
                     if image:
                         img = np.frombuffer(image.data, dtype=np.uint8)
                         img = img.reshape((geom.height, geom.width, 4))  # RGBA format
-                        self.frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+                        self.frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR) # pylint: disable=no-member
 
                 except XError:
                     print("X11 Error: Window may have closed or is inaccessible.")
@@ -116,14 +118,3 @@ class AppCapturer:
 if __name__ == '__main__':
     capturer = AppCapturer("Google Chrome")
     capturer.start_capture()
-    try:
-        while True:
-            if capturer.frame is not None:
-                cv2.imshow("Captured Frame", capturer.frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-    except KeyboardInterrupt:
-        print("Stopping capture...")
-    finally:
-        capturer.stop_capture()
-        cv2.destroyAllWindows()

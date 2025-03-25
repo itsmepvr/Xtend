@@ -22,20 +22,19 @@ def get_open_applications() -> list[str]:
         from ctypes import wintypes
 
         user32 = ctypes.windll.user32
-        EnumWindows = user32.EnumWindows
-        EnumWindowsProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-        GetWindowThreadProcessId = user32.GetWindowThreadProcessId
-        IsWindowVisible = user32.IsWindowVisible
-        GetWindowTextW = user32.GetWindowTextW
-        GetWindowTextLengthW = user32.GetWindowTextLengthW
+        enum_windows = user32.EnumWindows  # Changed to snake_case
+        enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        is_window_visible = user32.IsWindowVisible
+        get_window_text_w = user32.GetWindowTextW
+        get_window_text_length_w = user32.GetWindowTextLengthW
 
         def enum_window_callback(hwnd, _):
             """Callback function for EnumWindows to fetch visible window titles."""
-            if IsWindowVisible(hwnd):
-                length = GetWindowTextLengthW(hwnd)
+            if is_window_visible(hwnd):
+                length = get_window_text_length_w(hwnd)
                 if length > 0:
                     buff = ctypes.create_unicode_buffer(length + 1)
-                    GetWindowTextW(hwnd, buff, length + 1)
+                    get_window_text_w(hwnd, buff, length + 1)
                     title = buff.value.strip()
                     if title:
                         parts = title.split(' - ')
@@ -43,10 +42,11 @@ def get_open_applications() -> list[str]:
 
             return True
 
-        EnumWindows(EnumWindowsProc(enum_window_callback), 0)
+        enum_windows(enum_windows_proc(enum_window_callback), 0)
 
     elif system == 'Darwin':
-        script = 'tell application "System Events" to get the name of every process where background only is false'
+        script = 'tell application "System Events" to get the name of every process where ' \
+        'background only is false'
         try:
             output = subprocess.check_output(['osascript', '-e', script], text=True).strip()
             if output:

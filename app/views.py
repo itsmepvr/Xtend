@@ -3,6 +3,7 @@
 import uuid
 import time
 import cv2
+from werkzeug.exceptions import HTTPException
 from flask import render_template, Response, request, redirect, url_for
 from app import app, app_sessions, logger
 from app.utils import get_open_applications
@@ -15,7 +16,7 @@ def index():
         applications = get_open_applications()
         logger.info("Rendered index page with current applications.")
         return render_template('index.html', curr_apps=applications, active_sessions=app_sessions)
-    except Exception as err:  # More specific exception logging
+    except HTTPException as err:  # More specific exception logging
         logger.error("Error rendering index page: %s", err, exc_info=True)
         return "Error loading the page", 500
 
@@ -47,24 +48,6 @@ def handle_selection():
         logger.error("Failed to start capture for %s: %s", selected_app, err, exc_info=True)
         return redirect(url_for('index'))
 
-@app.route('/close-session', methods=['POST'])
-def close_session():
-    """Close an active capture session and remove it from memory."""
-    session_id = request.form.get('session_id')
-
-    if session_id not in app_sessions:
-        logger.warning("Attempted to close invalid session ID: %s", session_id)
-        return redirect(url_for('index'))
-
-    try:
-        app_sessions[session_id]['capturer'].stop_capture()
-        del app_sessions[session_id]
-        logger.info("Session %s closed successfully.", session_id)
-    except Exception as err:
-        logger.error("Error closing session %s: %s", session_id, err, exc_info=True)
-
-    return redirect(url_for('index'))
-
 @app.route('/stream/<session_id>', methods=['GET'])
 def stream_page(session_id):
     """Render the streaming page for a given session."""
@@ -85,7 +68,7 @@ def generate_frames(session_id):
 
         try:
             if capturer.frame is not None:
-                ret, buffer = cv2.imencode('.jpg', capturer.frame)
+                ret, buffer = cv2.imencode('.jpg', capturer.frame) # pylint: disable=no-member
                 if not ret:
                     logger.warning("Failed to encode frame for session %s", session_id)
                     continue
@@ -101,7 +84,7 @@ def generate_frames(session_id):
         except GeneratorExit:
             logger.info("Client disconnected for session %s.", session_id)
             break
-        except (cv2.error, RuntimeError) as err:
+        except Exception as err:
             logger.error("Stream error for session %s: %s", session_id, err, exc_info=True)
             break
 
@@ -113,7 +96,8 @@ def video_feed(session_id):
         return "Invalid session", 404
 
     logger.info("Streaming video feed for session ID: %s", session_id)
-    return Response(generate_frames(session_id), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_frames(session_id),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.errorhandler(Exception)
 def handle_exception(error):

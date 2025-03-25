@@ -4,6 +4,7 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 
+
 # Set up logging configuration
 logging.basicConfig(
     level=logging.INFO,
