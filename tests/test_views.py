@@ -1,5 +1,6 @@
 "Pytest Test Cases"
 import unittest
+from unittest.mock import patch
 from app import app, app_sessions
 
 class FlaskAppTests(unittest.TestCase):
@@ -17,16 +18,26 @@ class FlaskAppTests(unittest.TestCase):
     def test_select_app_route(self):
         """Test the select-app route ('/select-app')"""
         data = {'application': 'my_app'}
-        response = self.client.post('/select-app', data=data)
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/', response.headers['Location'])
+        with patch('app.views.AppCapturer') as mock_capturer:
+            mock_capturer = mock_capturer.return_value
+            mock_capturer.start_capture.return_value = None
+
+            response = self.client.post('/select-app', data=data)
+
+            self.assertEqual(response.status_code, 302)
+            self.assertIn('/', response.headers['Location'])
 
     def test_select_app_route_no_app(self):
         """Test the select-app route with no application selected"""
         data = {'application': ''}
-        response = self.client.post('/select-app', data=data)
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/', response.headers['Location'])
+        with patch('app.views.AppCapturer') as mock_capturer:
+            mock_capturer = mock_capturer.return_value
+            mock_capturer.start_capture.return_value = None
+
+            response = self.client.post('/select-app', data=data)
+
+            self.assertEqual(response.status_code, 302)
+            self.assertIn('/', response.headers['Location'])
 
     def test_close_session_route(self):
         """Test the close-session route ('/close-session')"""
