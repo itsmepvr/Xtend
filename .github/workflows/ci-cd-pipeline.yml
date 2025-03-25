@@ -9,10 +9,6 @@ on:
   pull_request:
     branches:
       - "*"
-    # Optionally exclude PRs from master/main by adding condition
-    # to only run for branches other than master/main
-    # example:
-    # if: github.head_ref != 'main' && github.head_ref != 'master'
 
 jobs:
   # Job to run linting and tests
@@ -33,19 +29,20 @@ jobs:
           pip install -r requirements.txt
 
       - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV # Set PYTHONPATH dynamically
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV  # Set PYTHONPATH dynamically
 
       - name: Install Pylint
-        run: |
-          pip install pylint
+        run: pip install pylint
 
       - name: Run Pylint
-        run: |
-          pylint $(git ls-files '*.py')  # Lint all Python files in the repo
+        env:
+          PYTHONPATH: ${{ env.PYTHONPATH }}  # Pass PYTHONPATH explicitly to the command
+        run: pylint $(git ls-files '*.py')  # Lint all Python files in the repo
 
       - name: Run Tests
-        run: |
-          pytest
+        env:
+          PYTHONPATH: ${{ env.PYTHONPATH }}  # Pass PYTHONPATH explicitly to the command
+        run: pytest
 
   # Job to deploy the app (only on push to main/master)
   deploy:
