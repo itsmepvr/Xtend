@@ -4,7 +4,7 @@ import uuid
 import time
 import cv2
 from werkzeug.exceptions import HTTPException
-from flask import render_template, Response, request, redirect, url_for
+from flask import render_template, Response, request, redirect, url_for, jsonify
 from app import app, app_sessions, logger
 from app.utils import get_open_applications
 from app.capture import AppCapturer
@@ -18,7 +18,7 @@ def index():
         return render_template('index.html', curr_apps=applications, active_sessions=app_sessions)
     except HTTPException as err:  # More specific exception logging
         logger.error("Error rendering index page: %s", err, exc_info=True)
-        return "Error loading the page", 500
+        return jsonify({'error': "Error loading the page"}), 500
 
 @app.route('/select-app', methods=['POST'])
 def handle_selection():
@@ -99,8 +99,27 @@ def video_feed(session_id):
     return Response(generate_frames(session_id),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/close-session', methods=['POST'])
+def close_session():
+    """Close an active session."""
+    session_id = request.form.get('session_id')
+
+    if not session_id:
+        return jsonify({'error': 'Session ID is required'}), 400
+
+    if session_id in app_sessions:
+        del app_sessions[session_id]
+        return redirect('/')
+
+    return jsonify({'error': 'Session not found'}), 404
+
 @app.errorhandler(Exception)
 def handle_exception(error):
     """Global error handler for catching unhandled exceptions."""
     logger.error("Uncaught exception: %s", error, exc_info=True)
-    return "Internal Server Error", 500
+    return jsonify({'error': "Internal Server Error"}), 500
+
+@app.route("/favicon.ico")
+def favicon():
+    "Favicon for exception error"
+    return "", 200

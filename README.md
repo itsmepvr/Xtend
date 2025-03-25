@@ -57,6 +57,14 @@ python run.py
 
 By default, the app will be accessible at `http://127.0.0.1:9999`.
 
+## Test Cases
+
+Test cases are in `tests` folder. Run test cases using below command:
+
+```bash
+PYTHONPATH=$(pwd) pytest
+```
+
 ## How It Works
 
 1. **Home Page**: The home page lists all the open applications on the desktop.

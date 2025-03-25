@@ -26,4 +26,4 @@ CORS(app)
 # Application sessions store
 app_sessions: dict = {}
 
-from app import views
+from app import views # pylint: disable=wrong-import-position
