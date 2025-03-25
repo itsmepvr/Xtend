@@ -8,34 +8,43 @@ from Xlib.ext import composite
 from Xlib.error import XError
 
 class AppCapturer:
-    def __init__(self, app_name):
+    """Captures the screen of a specific application window using X11 and Composite extension."""
+    
+    def __init__(self, app_name: str):
+        """Initialize the AppCapturer with the application name."""
         self.app_name = app_name
         self.running = False
         self.frame = None
         self.capture_thread = None
         self.disp = None
         self.window = None
-    
-    def _find_window(self):
-        """Find window using wmctrl"""
+
+    def _find_window(self) -> int | None:
+        """Find the application window ID using wmctrl.
+
+        Returns:
+            int | None: The window ID if found, otherwise None.
+        """
         try:
-            output = subprocess.check_output(['wmctrl', '-l']).decode()
-            for line in output.split('\n'):
+            output = subprocess.check_output(['wmctrl', '-l'], text=True)
+            for line in output.splitlines():
                 parts = line.split(None, 3)
                 if len(parts) == 4 and self.app_name.lower() in parts[3].lower():
-                    return int(parts[0], 16)  # Convert window ID to integer
-        except Exception as e:
-            print(f"Window finding failed: {e}")
+                    return int(parts[0], 16)  # Convert hex window ID to integer
+        except subprocess.CalledProcessError as e:
+            print(f"Error finding window: {e}")
+        except ValueError:
+            print("Failed to parse window ID.")
         return None
 
-    def _init_composite(self):
-        """Ensure Composite extension is enabled"""
+    def _init_composite(self) -> None:
+        """Ensure XComposite extension is enabled."""
         ext_info = self.disp.query_extension('Composite')
         if not ext_info.present:
-            raise RuntimeError("XComposite extension not available")
+            raise RuntimeError("XComposite extension is not available on this system.")
 
-    def start_capture(self):
-        """Start capturing the application's window"""
+    def start_capture(self) -> None:
+        """Start capturing the application's window."""
         window_id = self._find_window()
         if not window_id:
             raise RuntimeError(f"Window for '{self.app_name}' not found")
@@ -46,14 +55,14 @@ class AppCapturer:
 
         # Redirect window to an off-screen pixmap
         composite.redirect_window(self.window, composite.RedirectManual)
-        self.disp.sync()  # Ensure X operations are applied
+        self.disp.sync()
 
         self.running = True
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self.capture_thread.start()
 
-    def _capture_loop(self):
-        """Main capture loop"""
+    def _capture_loop(self) -> None:
+        """Main capture loop for retrieving frames."""
         try:
             while self.running:
                 try:
@@ -66,44 +75,55 @@ class AppCapturer:
                         self.frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
                 except XError:
-                    print("X11 Error: Window may have closed.")
-                    break  # Exit the loop if the window is invalid
+                    print("X11 Error: Window may have closed or is inaccessible.")
+                    break  # Stop capturing if the window is invalid
 
-                time.sleep(0.033)  # Maintain 30 FPS
+                time.sleep(1 / 30)  # Maintain ~30 FPS
 
         except Exception as e:
             print(f"Unexpected error in capture loop: {e}")
 
-    def cleanup(self):
-        """Release resources properly without crashing"""
+    def cleanup(self) -> None:
+        """Release resources properly."""
         if self.window:
             try:
                 composite.unredirect_window(self.window, composite.RedirectManual)
             except XError:
-                pass  # Ignore X errors if the window is already gone
+                pass  # Ignore errors if window is already closed
 
         if self.disp:
             try:
-                self.disp.sync()  # Ensure all commands are processed
-                self.disp.close()  # Close the display connection properly
+                self.disp.sync()
+                self.disp.close()
             except XError:
-                pass  # Ignore errors if display is already invalid
+                pass
             except Exception as e:
                 print(f"Warning: Failed to close X display: {e}")
 
         self.window = None
-        self.disp = None  # Ensure object references are cleared
+        self.disp = None
 
-    def stop_capture(self):
-        """Stop capturing without blocking indefinitely"""
-        self.running = False  # Signal the thread to stop
+    def stop_capture(self) -> None:
+        """Stop capturing without blocking indefinitely."""
+        self.running = False
         if self.capture_thread:
-            self.capture_thread.join(timeout=2)  # Prevent infinite blocking
+            self.capture_thread.join(timeout=2)
             if self.capture_thread.is_alive():
                 print("Warning: Capture thread did not terminate properly.")
 
         self.cleanup()
 
 if __name__ == '__main__':
-    capturer = AppCapturer("Visual Studio Code")
+    capturer = AppCapturer("Google Chrome")
     capturer.start_capture()
+    try:
+        while True:
+            if capturer.frame is not None:
+                cv2.imshow("Captured Frame", capturer.frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    except KeyboardInterrupt:
+        print("Stopping capture...")
+    finally:
+        capturer.stop_capture()
+        cv2.destroyAllWindows()
