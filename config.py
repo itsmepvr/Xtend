@@ -1,7 +1,7 @@
 "Module Configuration"
 import os
 
-class Config:
+class Config: # pylint: disable=too-few-public-methods
     "Configuration"
     DEBUG = True
     HOST = "0.0.0.0"
