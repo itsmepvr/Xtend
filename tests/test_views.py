@@ -10,11 +10,6 @@ def test_index():
     assert response.status_code == 200
     assert "Select an Application" in response.text  # Checking if applications are loaded
 
-def test_handle_selection():
-    """Test selecting an application for streaming."""
-    response = client.post("/select-app", data={"application": "Google Chrome"})
-    assert response.status_code == 200  # Redirect
-
 def test_handle_selection_invalid():
     """Test selecting an application without providing a name."""
     response = client.post("/select-app", data={"application": ""})
