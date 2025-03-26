@@ -1,7 +1,9 @@
-"Module to capture app screen"
+"App screen capture module"
+# pylint: disable=no-member
 import subprocess
 import threading
 import time
+import queue
 import cv2
 import numpy as np
 from Xlib import display, X
@@ -15,17 +17,13 @@ class AppCapturer:
         """Initialize the AppCapturer with the application name."""
         self.app_name = app_name
         self.running = False
-        self.frame = None
+        self.frame_queue = queue.Queue(maxsize=2)  # Buffer to store frames
         self.capture_thread = None
         self.disp = None
         self.window = None
 
     def _find_window(self) -> int | None:
-        """Find the application window ID using wmctrl.
-
-        Returns:
-            int | None: The window ID if found, otherwise None.
-        """
+        """Find the application window ID using wmctrl."""
         try:
             output = subprocess.check_output(['wmctrl', '-l'], text=True)
             for line in output.splitlines():
@@ -53,34 +51,37 @@ class AppCapturer:
         self.disp = display.Display()
         self._init_composite()
         self.window = self.disp.create_resource_object('window', window_id)
-
-        # Redirect window to an off-screen pixmap
         composite.redirect_window(self.window, composite.RedirectManual)
         self.disp.sync()
 
         self.running = True
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+
         self.capture_thread.start()
 
     def _capture_loop(self) -> None:
-        """Main capture loop for retrieving frames."""
+        """Captures frames and adds them to the queue."""
         try:
+            geom = self.window.get_geometry()  # Fetch geometry once
             while self.running:
+                start_time = time.time()
                 try:
-                    geom = self.window.get_geometry()
                     image = self.window.get_image(0, 0, geom.width,
-                                        geom.height, X.ZPixmap, 0xffffffff)
-
+                                                  geom.height, X.ZPixmap, 0xffffffff)
                     if image:
-                        img = np.frombuffer(image.data, dtype=np.uint8)
-                        img = img.reshape((geom.height, geom.width, 4))  # RGBA format
-                        self.frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR) # pylint: disable=no-member
+                        img = np.frombuffer(image.data, dtype=np.uint8) \
+                        .reshape((geom.height, geom.width, 4))
+                        frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+                        if not self.frame_queue.full():
+                            self.frame_queue.put_nowait(frame)
 
                 except XError:
                     print("X11 Error: Window may have closed or is inaccessible.")
-                    break  # Stop capturing if the window is invalid
+                    break
 
-                time.sleep(1 / 30)  # Maintain ~30 FPS
+                elapsed = time.time() - start_time
+                time.sleep(max(0, (1 / 30) - elapsed))  # Adaptive frame rate control
 
         except Exception as e:
             print(f"Unexpected error in capture loop: {e}")
@@ -91,7 +92,7 @@ class AppCapturer:
             try:
                 composite.unredirect_window(self.window, composite.RedirectManual)
             except XError:
-                pass  # Ignore errors if window is already closed
+                pass
 
         if self.disp:
             try:
@@ -110,8 +111,8 @@ class AppCapturer:
         self.running = False
         if self.capture_thread:
             self.capture_thread.join(timeout=2)
-            if self.capture_thread.is_alive():
-                print("Warning: Capture thread did not terminate properly.")
+        if self.process_thread:
+            self.process_thread.join(timeout=2)
 
         self.cleanup()
 

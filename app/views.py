@@ -1,125 +1,134 @@
 """Flask routes for handling application selection, streaming, and session management."""
-
+# pylint: disable=no-member
+import queue
 import uuid
 import time
+import asyncio
 import cv2
-from werkzeug.exceptions import HTTPException
-from flask import render_template, Response, request, redirect, url_for, jsonify
-from app import app, app_sessions, logger
+from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from app import app, app_sessions, logger, templates
 from app.utils import get_open_applications
 from app.capture import AppCapturer
 
-@app.route('/')
-def index():
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
     """Render the index page with available applications and active sessions."""
     try:
-        applications = get_open_applications()
+        applications = get_open_applications()  # Assuming you have this function defined elsewhere
         logger.info("Rendered index page with current applications.")
-        return render_template('index.html', curr_apps=applications, active_sessions=app_sessions)
-    except HTTPException as err:  # More specific exception logging
+        return templates.TemplateResponse({
+            "request": request, 
+            "curr_apps": applications, 
+            "active_sessions": app_sessions
+        }, "index.html")
+    except Exception as err:
         logger.error("Error rendering index page: %s", err, exc_info=True)
-        return jsonify({'error': "Error loading the page"}), 500
+        return JSONResponse({"error": "Error loading the page"}, status_code=500)
 
-@app.route('/select-app', methods=['POST'])
-def handle_selection():
+# Handle the selection of an application for screen capture
+@app.post("/select-app")
+async def handle_selection(application: str = Form(...)):
     """Handle selection of an application for screen capture."""
-    selected_app = request.form.get('application')
-
-    if not selected_app:
-        logger.warning("No application selected by the user.")
-        return redirect(url_for('index'))
+    if not application:
+        raise HTTPException(status_code=400, detail="Application is required")
 
     session_id = str(uuid.uuid4())
 
     try:
-        logger.info("Starting capture for %s with session ID %s", selected_app, session_id)
-        capturer = AppCapturer(selected_app)
+        logger.info("Starting capture for %s with session ID %s", application, session_id)
+        capturer = AppCapturer(application)
         capturer.start_capture()
 
         app_sessions[session_id] = {
             'capturer': capturer,
             'timestamp': time.time(),
-            'app_name': selected_app
+            'app_name': application
         }
-        logger.info("Capture started successfully for %s, session ID: %s", selected_app, session_id)
-        return redirect(url_for('index'))
+        logger.info("Capture started successfully for %s, session ID: %s", application, session_id)
 
-    except (KeyError, ValueError, RuntimeError) as err:
-        logger.error("Failed to start capture for %s: %s", selected_app, err, exc_info=True)
-        return redirect(url_for('index'))
+        return RedirectResponse(url="/", status_code=303)
 
-@app.route('/stream/<session_id>', methods=['GET'])
-def stream_page(session_id):
-    """Render the streaming page for a given session."""
+    except Exception as err:
+        logger.error("Failed to start capture for %s: %s", application, err, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start capture") from err
+
+# WebSocket endpoint for streaming frames
+@app.websocket("/ws/{session_id}")
+async def websocket_stream(session_id: str, websocket: WebSocket):
+    """Stream the captured video frames to the client via WebSocket."""
     if session_id not in app_sessions:
         logger.error("Invalid session ID: %s requested for streaming.", session_id)
-        return "Session expired or invalid", 404
+        await websocket.close(code=1000)  # Close connection
+        return
 
+    await websocket.accept()
     logger.info("Starting video feed for session ID: %s", session_id)
-    return render_template('stream.html', session_id=session_id)
 
-def generate_frames(session_id):
-    """Generate video frames for live streaming."""
-    while True:
-        if session_id not in app_sessions:
-            break
+    try:
+        while True:
+            capturer = app_sessions[session_id]['capturer']
+            frame = None
 
-        capturer = app_sessions[session_id]['capturer']
+            # Try to get the latest frame from the frame queue
+            try:
+                frame = capturer.frame_queue.get_nowait()  # Non-blocking get
+            except queue.Empty:
+                pass  # No frame available, continue
 
-        try:
-            if capturer.frame is not None:
-                ret, buffer = cv2.imencode('.jpg', capturer.frame) # pylint: disable=no-member
+            if frame is not None:
+                # Encode the frame to JPEG format
+                ret, buffer = cv2.imencode('.jpg', frame)
                 if not ret:
                     logger.warning("Failed to encode frame for session %s", session_id)
                     continue
-                frame = buffer.tobytes()
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                frame_data = buffer.tobytes()
+                await websocket.send_bytes(frame_data)  # Send the frame to the client
+
             else:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + b'\r\n')
+                await websocket.send_bytes(b'')  # Send empty bytes if no frame is available
 
-            time.sleep(0.033)
+            await asyncio.sleep(0.033)  # ~30 FPS (can be adjusted)
 
-        except GeneratorExit:
-            logger.info("Client disconnected for session %s.", session_id)
-            break
-        except Exception as err:
-            logger.error("Stream error for session %s: %s", session_id, err, exc_info=True)
-            break
+    except WebSocketDisconnect:
+        logger.info("Client disconnected for session %s.", session_id)
 
-@app.route('/video_feed/<session_id>')
-def video_feed(session_id):
-    """Stream the captured video for a session."""
+# Serve the streaming page
+@app.get("/stream/{session_id}", response_class=HTMLResponse)
+async def stream_page(request: Request, session_id: str):
+    """Render the streaming page for a given session."""
     if session_id not in app_sessions:
-        logger.error("Invalid session ID: %s requested for video feed.", session_id)
-        return "Invalid session", 404
+        logger.error("Invalid session ID: %s requested for streaming.", session_id)
+        return templates.TemplateResponse(
+            {"request": request, "session_id": session_id},
+            "session_expired.html"
+        )
 
-    logger.info("Streaming video feed for session ID: %s", session_id)
-    return Response(generate_frames(session_id),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    logger.info("Starting video feed for session ID: %s", session_id)
+    return templates.TemplateResponse("stream.html", {"request": request, "session_id": session_id})
 
-@app.route('/close-session', methods=['POST'])
-def close_session():
-    """Close an active session."""
-    session_id = request.form.get('session_id')
-
+# Close an active session
+@app.post("/close-session")
+async def close_session(session_id: str = Form(...)):
+    """Close an active session and redirect to the home page."""
     if not session_id:
-        return jsonify({'error': 'Session ID is required'}), 400
+        raise HTTPException(status_code=400, detail="Session ID is required")
 
     if session_id in app_sessions:
         del app_sessions[session_id]
-        return redirect('/')
+        return RedirectResponse(url="/", status_code=303)  # Redirect to home
 
-    return jsonify({'error': 'Session not found'}), 404
+    raise HTTPException(status_code=404, detail="Session not found")
 
-@app.errorhandler(Exception)
-def handle_exception(error):
-    """Global error handler for catching unhandled exceptions."""
-    logger.error("Uncaught exception: %s", error, exc_info=True)
-    return jsonify({'error': "Internal Server Error"}), 500
+# Global error handler
+@app.exception_handler(Exception)
+async def handle_exception(request, error):
+    """Global error handler for uncaught exceptions."""
+    logger.error("Uncaught exception: %s %s", error, request, exc_info=True)
+    return JSONResponse({"error": "Internal Server Error"}, status_code=500)
 
-@app.route("/favicon.ico")
-def favicon():
-    "Favicon for exception error"
-    return "", 200
+# Favicon
+@app.get("/favicon.ico")
+async def favicon():
+    """Return empty response for favicon."""
+    return JSONResponse(content="", status_code=200)

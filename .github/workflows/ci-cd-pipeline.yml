@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get install wmctrl x11-utils libxcomposite-dev libxrender-dev
 
@@ -67,12 +67,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+
       - name: Build App
         run: |
-          # Example build steps (adjust according to your app)
           echo "Building the app..."
 
-      - name: Deploy to Server
+      - name: Deploy FastAPI app with Uvicorn
         run: |
-          # Add your deployment commands here (e.g., SSH, Docker, etc.)
-          echo "Deploying to production server..."
+          # Example deploy commands for FastAPI app
+          echo "Deploying FastAPI app to production..."
+          # Start FastAPI app with Uvicorn (adjust the command based on your app structure)
+          nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload & # Assuming app
