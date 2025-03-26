@@ -1,9 +1,11 @@
 """Flask app initialization with logging and CORS configuration."""
-
 import logging
-from flask import Flask
-from flask_cors import CORS
+from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from loguru import logger
 
 # Set up logging configuration
 logging.basicConfig(
@@ -17,13 +19,24 @@ logging.basicConfig(
 
 # Create a logger instance
 logger = logging.getLogger(__name__)
-logger.info("Starting Flask application...")
+logger.info("Starting FastAPI application...")
 
-# Flask App initialization
-app = Flask(__name__)
-CORS(app)
+# FastAPI App initialization
+app = FastAPI()
+
+# Enable CORS for the FastAPI app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 # Application sessions store
 app_sessions: dict = {}
 
-from app import views # pylint: disable=wrong-import-position
+# Import views (routes)
+from app import views  # pylint: disable=wrong-import-position

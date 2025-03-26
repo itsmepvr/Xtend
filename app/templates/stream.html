@@ -84,10 +84,6 @@
         }
 
         .fullscreen-mode .fullscreen-button {
-            /* position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 0, 0, 0.7); */
             display: none;
         }
     </style>
@@ -96,11 +92,34 @@
 <body>
     <h1>Live Application Stream</h1>
     <div class="stream-container">
-        <img id="stream-img" src="{{ url_for('video_feed', session_id=session_id) }}">
+        <img id="stream-img" src="" alt="Streaming" />
     </div>
     <button class="fullscreen-button" onclick="toggleFullScreen()">Full Screen</button>
 
     <script>
+        // WebSocket connection to the server
+        const sessionId = "{{ session_id }}";
+        const socket = new WebSocket(`ws://${window.location.host}/ws/${sessionId}`);
+
+        socket.onmessage = function (event) {
+            const arrayBuffer = event.data;
+            const frameBlob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+            const imageUrl = URL.createObjectURL(frameBlob);
+            document.getElementById("stream-img").src = imageUrl;
+        };
+
+        socket.onopen = function () {
+            console.log("WebSocket connection established.");
+        };
+
+        socket.onerror = function (error) {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = function () {
+            console.log("WebSocket connection closed.");
+        };
+
         function toggleFullScreen() {
             let body = document.body;
             let btn = document.querySelector(".fullscreen-button");

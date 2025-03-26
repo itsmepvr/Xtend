@@ -1,6 +1,6 @@
 # Xtend Screen
 
-This project enables any device with a web browser to be used as a secondary screen for your computer. It captures the screen of specific applications running on the desktop and streams them to a browser for display. Developed using Python and Flask, it uses Xlib, Composite, and Display to capture the application’s screen in real-time and provide an interactive user experience.
+This project enables any device with a web browser to be used as a secondary screen for your computer. It captures the screen of specific applications running on the desktop and streams them to a browser for display. Developed using Python and **FastAPI**, it uses Xlib, Composite, and Display to capture the application’s screen in real-time and provide an interactive user experience.
 
 ## Features
 
@@ -12,7 +12,8 @@ This project enables any device with a web browser to be used as a secondary scr
 ## Requirements
 
 - Python 3.x
-- Flask
+- FastAPI
+- Uvicorn (ASGI server for FastAPI)
 - Xlib
 - Python-Xlib
 - Composite extension for X11
@@ -47,19 +48,19 @@ Ensure that you have the necessary dependencies for screen capturing:
 
 - **For macOS**: Ensure that you have the appropriate libraries for screen capturing and display.
 
-### 4. Run the Flask Application
+### 4. Run the FastAPI Application
 
-Start the Flask server to begin capturing and streaming the screens.
+Start the FastAPI server to begin capturing and streaming the screens. We will use **Uvicorn** as the ASGI server to run the FastAPI app.
 
 ```bash
-python run.py
+uvicorn run:app --host 0.0.0.0 --port 9999 --reload
 ```
 
 By default, the app will be accessible at `http://127.0.0.1:9999`.
 
 ## Test Cases
 
-Test cases are in `tests` folder. Run test cases using below command:
+Test cases are in the `tests` folder. Run test cases using the following command:
 
 ```bash
 PYTHONPATH=$(pwd) pytest
@@ -69,7 +70,7 @@ PYTHONPATH=$(pwd) pytest
 
 1. **Home Page**: The home page lists all the open applications on the desktop.
 2. **URL Generation**: Upon selecting an application, a unique URL is generated with a query parameter (e.g., `?app_id=12345`).
-3. **Screen Capture**: The Flask app uses Xlib, Composite, and Display libraries to capture the screen of the selected application.
+3. **Screen Capture**: The FastAPI app uses Xlib, Composite, and Display libraries to capture the screen of the selected application.
 4. **Web Streaming**: The captured screen is then streamed to the web browser in real-time.
 
 ## Contributing
@@ -89,6 +90,11 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Acknowledgments
 
-- [Flask](https://flask.palletsprojects.com/) for the web framework.
+- [FastAPI](https://fastapi.tiangolo.com/) for the web framework.
+- [Uvicorn](https://www.uvicorn.org/) for running the FastAPI app (ASGI server).
 - [Xlib](https://pypi.org/project/python-xlib/) for interacting with the X11 display server.
 - [Composite Extension](https://www.x.org/wiki/) for capturing the application windows.
+
+## Author
+
+Developed by [Venkata Ramana, P](https://github.com/itsmepvr).
