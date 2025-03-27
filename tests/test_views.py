@@ -1,6 +1,6 @@
 "Test Cases"
 from fastapi.testclient import TestClient
-from app.server import app, app_sessions
+from app.server import app
 
 client = TestClient(app)
 
