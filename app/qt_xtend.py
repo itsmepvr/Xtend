@@ -9,7 +9,7 @@ from config import Config
 
 FASTAPI_URL = f"http://{Config.HOST}:{Config.PORT}"
 
-class XtendScreenQt(QWidget):
+class XtendScreenQt(QWidget): # pylint: disable=too-few-public-methods
     """Qt Application with embedded FastAPI UI"""
     def __init__(self):
         super().__init__()

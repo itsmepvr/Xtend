@@ -3,8 +3,10 @@ import argparse
 from app import start_application
 
 def main():
+    "Arguent Parse and load configuration"
     parser = argparse.ArgumentParser(description="Choose application mode: Qt or Web")
-    parser.add_argument("--mode", choices=["qt", "web"], default="qt", help="Run in Qt mode or Web mode (default: qt)")
+    parser.add_argument("--mode", choices=["qt", "web"],
+                        default="qt", help="Run in Qt mode or Web mode (default: qt)")
 
     args = parser.parse_args()
 
