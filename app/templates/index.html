@@ -4,77 +4,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to FastAPI Streaming App</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <title>FastAPI Streaming App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        html,
         body {
-            background-color: #222;
-            color: white;
-        }
-
-        .session-card {
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            background: url('/static/assets/images/background.jpg') no-repeat center center fixed;
+            background-size: cover;
         }
     </style>
 </head>
 
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center">Welcome to the FastAPI Streaming App!</h1>
+<body class="bg-gray-900 text-white h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="p-4 flex justify-between items-center shadow-md">
+        <a href="/">
+            <img src="/static/assets/images/xtend_logo.jpeg" alt="Logo" class="w-60 h-20 cursor-pointer">
+        </a>
+        <div class="space-x-6">
+            <!-- <a href="#" class="hover:text-gray-400">Tutorial</a> -->
+            <a href="/about" class="text-xl font-bold hover:text-gray-400 cursor-pointer">About</a>
+        </div>
+    </nav>
 
-        <hr>
+    <div class="flex flex-col flex-grow">
+        <!-- Left Half: Application Selection -->
+        <div class="w-100 flex flex-col justify-center items-center p-6 border-r border-gray-700">
+            <h1 class="text-4xl font-bold mb-10 mt-10">Real-time application screen sharing to your web browser.</h1>
 
-        <!-- Active Sessions -->
+            <div class="flex space-x-6">
+                <div id="select-screen"
+                    class="px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md cursor-pointer">Entire
+                    Screen</div>
+                <div id="select-app"
+                    class="px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md cursor-pointer">
+                    Select
+                    Application</div>
+            </div>
+        </div>
         {% if active_sessions %}
-        <div class="row justify-content-center mb-4">
-            <div class="col-md-8">
-                <h3 class="mb-3">Active Sessions</h3>
+        <!-- Right Half: Active Sessions -->
+        <div class="w-100 flex flex-col justify-center items-center p-6">
+            <h2 class="text-xl font-bold mb-4">Active Sessions</h2>
+            <p>View all sessions at: <a href="http://{{ server_ip }}:{{ server_port }}/stream"
+                    class="text-blue-400">http://{{ server_ip }}:{{ server_port }}/stream</a></p>
+            <div class="mt-4 space-y-4">
                 {% for session_id, session in active_sessions.items() %}
-                <div class="session-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5>{{ session.app_name }}</h5>
-                            <a href="/stream/{{ session_id }}" target="_blank">{{ session_id }}</a>
-                        </div>
-                        <form action="/close-session" method="POST">
-                            <input type="hidden" name="session_id" value="{{ session_id }}">
-                            <button type="submit" class="btn btn-danger">Close Session</button>
-                        </form>
-                    </div>
+                <div class="bg-gray-800 p-4 rounded-lg flex justify-between w-96">
+                    <a href="http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}" class="text-blue-400">{{
+                        session.app_name }}</a>
+                    <form action="/close-session" method="POST">
+                        <input type="hidden" name="session_id" value="{{ session_id }}">
+                        <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-500 rounded">Close</button>
+                    </form>
                 </div>
                 {% endfor %}
             </div>
         </div>
-        {% else %}
+        {% endif %}
+    </div>
 
-        <!-- Application Selection Form -->
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <h3 class="mb-3">Select an Application</h3>
-                <form action="/select-app" method="POST">
-                    <div class="form-group">
-                        {% for app in curr_apps %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="application" id="app{{ loop.index }}"
-                                value="{{ app }}" required>
-                            <label class="form-check-label" for="app{{ loop.index }}">
-                                {{ app }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <button type="submit" class="btn btn-primary">Start Streaming Session</button>
-                </form>
+    <!-- Popup Modal -->
+    <div id="select-app-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-blue-600 bg-opacity-80 p-6 rounded-lg w-1/2 max-h-[400px] overflow-y-auto relative">
+            <button id="select-close-popup"
+                class="absolute top-2 right-2 text-white text-4xl font-bold hover:text-gray-300">
+                &times;
+            </button>
+            <h2 class="text-xl font-bold mb-4">Select an Application</h2>
+            <div class="grid grid-cols-3 gap-4">
+                {% for app in curr_apps %}
+                <div class="bg-gray-100 text-slate-900 p-4 rounded-lg text-center cursor-pointer hover:bg-gray-400 hover:shadow-lg select-app"
+                    data-app="{{ app }}">
+                    <img src="/static/assets/images/xtend_logo.png" alt="{{ app }}" class="h-16 mx-auto mb-2">
+                    <p>{{ app }}</p>
+                </div>
+                {% endfor %}
             </div>
         </div>
-
-        {% endif %}
-
     </div>
+
+
+    <script>
+        document.getElementById("select-close-popup").addEventListener("click", function () {
+            document.getElementById('select-app-popup').classList.add("hidden");
+        });
+
+        document.getElementById("select-screen").addEventListener("click", function () {
+            fetch("/select-app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ application: "entire-screen" })
+            });
+        });
+
+        document.getElementById("select-app").addEventListener("click", function () {
+            document.getElementById("select-app-popup").classList.remove("hidden");
+        });
+
+        document.querySelectorAll(".select-app").forEach(el => {
+            el.addEventListener("click", function () {
+                let appName = this.getAttribute("data-app");
+                fetch("/select-app", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ application: appName })
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload(); // Refresh the page to show active sessions
+                    } else {
+                        console.error("Failed to start session");
+                    }
+                }).catch(error => console.error("Error:", error));
+                document.getElementById("select-app-popup").classList.add("hidden");
+            });
+        });
+    </script>
 </body>
 
 </html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI Streaming App</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        html,
+        body {
+            background-color: #222;
+            color: white;
+        }
+
+        .session-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">FastAPI Streaming App</h1>
+        <hr>
+
+        <!-- Active Sessions -->
+        {% if active_sessions %}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <h3 class="mb-3">Active Sessions</h3>
+                <p>You can view all active sessions at:
+                    <strong><a href="http://{{ server_ip }}:{{ server_port }}/stream" target="_blank">
+                            http://{{ server_ip }}:{{ server_port }}/stream
+                        </a></strong>
+                </p>
+
+                {% for session_id, session in active_sessions.items() %}
+                <div class="session-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5>{{ session.app_name }}</h5>
+                            <a href="http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}" target="_blank">
+                                http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}
+                            </a>
+                        </div>
+                        <form action="/close-session" method="POST">
+                            <input type="hidden" name="session_id" value="{{ session_id }}">
+                            <button type="submit" class="btn btn-danger">Close Session</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center"><strong>No active sessions.</strong></div>
+        {% endif %}
+
+        <hr>
+
+        <!-- Application Selection -->
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h3 class="mb-3">Select an Application</h3>
+                <form action="/select-app" method="POST">
+                    <div class="form-group">
+                        {% for app in curr_apps %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="application" id="app{{ loop.index }}"
+                                value="{{ app }}" required>
+                            <label class="form-check-label" for="app{{ loop.index }}">
+                                {{ app }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Start Streaming Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
