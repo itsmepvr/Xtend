@@ -1,42 +1,25 @@
-"""Flask app initialization with logging and CORS configuration."""
-import logging
-from pathlib import Path
+"Main file"
+import threading
+import sys
+import uvicorn
+from PySide6.QtWidgets import QApplication
+from app.qt_xtend import XtendScreenQt
+from app.server import app
+from config import Config
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
-from loguru import logger
+def start_application(mode:str="qt"):
+    "Qt application with fastapi server"
+    if mode == "web":
+        run_fastapi()
+    else:
+        fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
+        fastapi_thread.start()
 
-# Set up logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("app.log")
-    ]
-)
+        qt = QApplication(sys.argv)
+        window = XtendScreenQt()
+        window.show()
+        sys.exit(qt.exec())
 
-# Create a logger instance
-logger = logging.getLogger(__name__)
-logger.info("Starting FastAPI application...")
-
-# FastAPI App initialization
-app = FastAPI()
-
-# Enable CORS for the FastAPI app
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-
-# Application sessions store
-app_sessions: dict = {}
-
-# Import views (routes)
-from app import views  # pylint: disable=wrong-import-position
+def run_fastapi():
+    "FastAPI server"
+    uvicorn.run(app, host=Config.HOST, port=Config.PORT, log_level="info")

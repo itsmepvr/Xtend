@@ -7,21 +7,34 @@ import asyncio
 import cv2
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from app import app, app_sessions, logger, templates
-from app.utils import get_open_applications
+from app.server import app, app_sessions, logger, templates
+from app.utils import get_open_applications, get_local_ip
 from app.capture import AppCapturer
+from config import Config
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Render the index page with available applications and active sessions."""
     try:
-        applications = get_open_applications()  # Assuming you have this function defined elsewhere
+        applications = get_open_applications()
         logger.info("Rendered index page with current applications.")
-        return templates.TemplateResponse({
+        server_ip = get_local_ip()
+        return templates.TemplateResponse("index.html", {
             "request": request, 
             "curr_apps": applications, 
-            "active_sessions": app_sessions
-        }, "index.html")
+            "active_sessions": app_sessions,
+            "server_ip": server_ip,
+            "server_port": Config.PORT,
+        })
+    except Exception as err:
+        logger.error("Error rendering index page: %s", err, exc_info=True)
+        return JSONResponse({"error": "Error loading the page"}, status_code=500)
+
+@app.get("/sessions")
+async def sessions():
+    """Render the index page with available applications and active sessions."""
+    try:
+        return JSONResponse({"sessions": app_sessions}, status_code=200)
     except Exception as err:
         logger.error("Error rendering index page: %s", err, exc_info=True)
         return JSONResponse({"error": "Error loading the page"}, status_code=500)
@@ -30,6 +43,7 @@ async def index(request: Request):
 @app.post("/select-app")
 async def handle_selection(application: str = Form(...)):
     """Handle selection of an application for screen capture."""
+    print(application)
     if not application:
         raise HTTPException(status_code=400, detail="Application is required")
 

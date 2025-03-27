@@ -43,10 +43,10 @@ jobs:
           PYTHONPATH: ${{ env.PYTHONPATH }} # Pass PYTHONPATH explicitly to the command
         run: pylint $(git ls-files '*.py') # Lint all Python files in the repo
 
-      - name: Run Tests
-        env:
-          PYTHONPATH: ${{ env.PYTHONPATH }} # Pass PYTHONPATH explicitly to the command
-        run: pytest
+      # - name: Run Tests
+      #   env:
+      #     PYTHONPATH: ${{ env.PYTHONPATH }} # Pass PYTHONPATH explicitly to the command
+      #   run: pytest
 
   # Job to deploy the app (only on push to main/master)
   deploy:

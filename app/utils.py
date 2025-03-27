@@ -2,6 +2,7 @@
 
 import platform
 import subprocess
+import socket
 
 try:
     import psutil  # Used for Linux process retrieval
@@ -108,6 +109,18 @@ def get_open_applications() -> list[str]:
         processed_apps.add(final_name)
 
     return sorted(processed_apps)
+
+def get_local_ip():
+    """Get the actual local IP address of the machine."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+    except Exception:
+        local_ip = "127.0.0.1"
+    finally:
+        s.close()
+    return local_ip
 
 if __name__ == '__main__':
     print("Open applications:", get_open_applications())

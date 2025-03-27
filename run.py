@@ -1,6 +1,19 @@
-"Main run file"
-# pylint: disable=no-member
-from app import app
+"Run file --args"
+import argparse
+from app import start_application
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=9999, debug=True)
+def main():
+    "Arguent Parse and load configuration"
+    parser = argparse.ArgumentParser(description="Choose application mode: Qt or Web")
+    parser.add_argument("--mode", choices=["qt", "web"],
+                        default="qt", help="Run in Qt mode or Web mode (default: qt)")
+
+    args = parser.parse_args()
+
+    if args.mode == "web":
+        start_application(mode='web')
+    else:
+        start_application(mode='qt')
+
+if __name__ == "__main__":
+    main()
