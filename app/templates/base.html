@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Xtend Streaming Platform{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base Styles */
+        .animated-bg {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .animated-bg span {
+            position: absolute;
+            width: 40vmin;
+            height: 40vmin;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 50%;
+            animation: float 25s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.1;
+            }
+
+            50% {
+                transform: translate(100vw, 50vh) scale(1.5);
+                opacity: 0.05;
+            }
+
+            100% {
+                transform: translate(0, 100vh) scale(0.8);
+                opacity: 0.1;
+            }
+        }
+
+        .gradient-bg {
+            background: linear-gradient(-45deg, #1a202c, #2d3748, #4a5568);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .hover-scale {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hover-scale:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a202c;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2d3748;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
+    </style>
+    {% block extra_styles %}{% endblock %}
+</head>
+
+<body class="gradient-bg text-white min-h-screen relative overflow-hidden">
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <span style="left: 10%; animation-delay: 0s"></span>
+        <span style="left: 30%; animation-delay: -5s"></span>
+        <span style="left: 50%; animation-delay: -10s"></span>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="fixed w-full bg-gray-900/80 backdrop-blur-sm z-50 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="/">
+                        <img src="/static/assets/images/xtend_logo.jpeg"
+                            class="h-12 w-auto transition-opacity hover:opacity-80" alt="Xtend Logo">
+                    </a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="flex items-center space-x-8">
+                        <a href="/"
+                            class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200">
+                            Home
+                        </a>
+                        <a href="/about"
+                            class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200">
+                            About
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        // Base Interactions
+        document.querySelectorAll('a, button').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                // Ripple Effect
+                const rect = this.getBoundingClientRect();
+                const ripple = document.createElement('div');
+                ripple.style.left = (e.clientX - rect.left) + 'px';
+                ripple.style.top = (e.clientY - rect.top) + 'px';
+                ripple.classList.add('ripple-effect');
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 500);
+            });
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

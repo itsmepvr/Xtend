@@ -1,124 +1,151 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FastAPI Streaming App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            background: url('/static/assets/images/background.jpg') no-repeat center center fixed;
-            background-size: cover;
-        }
-    </style>
-</head>
+{% block title %}Xtend - Home{% endblock %}
 
-<body class="bg-gray-900 text-white h-screen flex flex-col">
-    <!-- Navbar -->
-    <nav class="p-4 flex justify-between items-center shadow-md">
-        <a href="/">
-            <img src="/static/assets/images/xtend_logo.jpeg" alt="Logo" class="w-60 h-20 cursor-pointer">
-        </a>
-        <div class="space-x-6">
-            <!-- <a href="#" class="hover:text-gray-400">Tutorial</a> -->
-            <a href="/about" class="text-xl font-bold hover:text-gray-400 cursor-pointer">About</a>
-        </div>
-    </nav>
+{% block content %}
+<div class="max-w-4xl mx-auto text-center mb-16">
+    <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
+        <!-- Hero Section -->
+        <div class="max-w-4xl mx-auto text-center mb-16">
+            <h1
+                class="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Xtend Application Streaming
+            </h1>
+            <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+                Enables any device with a web browser to be used as a secondary screen for your computer.
+            </p>
 
-    <div class="flex flex-col flex-grow">
-        <!-- Left Half: Application Selection -->
-        <div class="w-100 flex flex-col justify-center items-center p-6 border-r border-gray-700">
-            <h1 class="text-4xl font-bold mb-10 mt-10">Real-time application screen sharing to your web browser.</h1>
-
-            <div class="flex space-x-6">
-                <div id="select-screen"
-                    class="px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md cursor-pointer">Entire
-                    Screen</div>
-                <div id="select-app"
-                    class="px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md cursor-pointer">
-                    Select
-                    Application</div>
+            <!-- Action Buttons -->
+            <div class="flex justify-center space-x-6">
+                <button id="select-screen"
+                    class="hover-scale px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Share Entire Screen
+                </button>
+                <button id="select-app"
+                    class="hover-scale px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Select Application
+                </button>
             </div>
         </div>
+
+        <!-- Active Sessions -->
         {% if active_sessions %}
-        <!-- Right Half: Active Sessions -->
-        <div class="w-100 flex flex-col justify-center items-center p-6">
-            <h2 class="text-xl font-bold mb-4">Active Sessions</h2>
-            <p>View all sessions at: <a href="http://{{ server_ip }}:{{ server_port }}/stream"
-                    class="text-blue-400">http://{{ server_ip }}:{{ server_port }}/stream</a></p>
-            <div class="mt-4 space-y-4">
+        <div class="max-w-4xl mx-auto mt-16">
+            <h2 class="text-2xl font-bold mb-8 text-gray-200">Active Sessions</h2>
+            <div class="space-y-4 text-xl">
                 {% for session_id, session in active_sessions.items() %}
-                <div class="bg-gray-800 p-4 rounded-lg flex justify-between w-96">
-                    <a href="http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}" class="text-blue-400">{{
-                        session.app_name }}</a>
-                    <form action="/close-session" method="POST">
-                        <input type="hidden" name="session_id" value="{{ session_id }}">
-                        <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-500 rounded">Close</button>
-                    </form>
+                <div
+                    class="hover-scale bg-gray-900/50 backdrop-blur-sm rounded-lg p-4 flex items-center justify-between transition-all duration-300">
+                    <div>
+                        <h3 class="font-bold text-blue-100">{{ session.app_name }}</h3>
+                        <p class="text-gray-400 text-sm">URL:
+                            <a href="http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}">http://{{
+                                server_ip
+                                }}:{{ server_port }}/{{ session_id }}</a>
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="http://{{ server_ip }}:{{ server_port }}/stream/{{ session_id }}" target="_blank"
+                            class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View Stream
+                        </a>
+                        <form action="/close-session" method="POST">
+                            <input type="hidden" name="session_id" value="{{ session_id }}">
+                            <button type="submit"
+                                class="px-4 py-2 bg-red-600/80 rounded-lg hover:bg-red-500 transition-colors flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Close
+                            </button>
+                        </form>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
-    </div>
+    </main>
 
-    <!-- Popup Modal -->
-    <div id="select-app-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-        <div class="bg-blue-600 bg-opacity-80 p-6 rounded-lg w-1/2 max-h-[400px] overflow-y-auto relative">
-            <button id="select-close-popup"
-                class="absolute top-2 right-2 text-white text-4xl font-bold hover:text-gray-300">
-                &times;
-            </button>
-            <h2 class="text-xl font-bold mb-4">Select an Application</h2>
-            <div class="grid grid-cols-3 gap-4">
+    <div id="select-app-popup"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div
+            class="bg-gray-900/90 backdrop-blur-lg rounded-xl max-w-2xl w-full max-h-[70vh] overflow-hidden shadow-2xl">
+            <div class="flex items-center justify-between p-6 border-b border-gray-800">
+                <h3 class="text-xl font-bold">Select Application</h3>
+                <button id="select-close-popup" class="text-gray-400 hover:text-white transition-colors">
+                    ✕
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-6 overflow-y-auto" style="max-height: 60vh">
                 {% for app in curr_apps %}
-                <div class="bg-gray-100 text-slate-900 p-4 rounded-lg text-center cursor-pointer hover:bg-gray-400 hover:shadow-lg select-app"
+                <div class="select-app hover-scale group bg-gray-800/50 rounded-lg p-4 cursor-pointer transition-all border border-transparent hover:border-blue-500/30"
                     data-app="{{ app }}">
-                    <img src="/static/assets/images/xtend_logo.png" alt="{{ app }}" class="h-16 mx-auto mb-2">
-                    <p>{{ app }}</p>
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="w-16 h-16 mb-3 bg-gray-700 rounded-xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                            <svg class="w-8 h-8 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <span
+                            class="text-center text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{{
+                            app }}</span>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
+{% block extra_scripts %}
+<script>
+    // Modal interactions
+    document.getElementById("select-close-popup").addEventListener("click", () => {
+        document.getElementById('select-app-popup').classList.add("hidden");
+    });
 
-    <script>
-        document.getElementById("select-close-popup").addEventListener("click", function () {
-            document.getElementById('select-app-popup').classList.add("hidden");
-        });
+    document.getElementById("select-app").addEventListener("click", () => {
+        document.getElementById("select-app-popup").classList.remove("hidden");
+    });
 
-        document.getElementById("select-screen").addEventListener("click", function () {
+    // Application selection
+    document.querySelectorAll(".select-app").forEach(el => {
+        el.addEventListener("click", function () {
+            const appName = this.dataset.app;
             fetch("/select-app", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ application: "entire-screen" })
-            });
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ application: appName })
+            }).then(response => {
+                if (response.ok) window.location.reload();
+                else console.error("Failed to start session");
+            }).catch(console.error);
         });
-
-        document.getElementById("select-app").addEventListener("click", function () {
-            document.getElementById("select-app-popup").classList.remove("hidden");
-        });
-
-        document.querySelectorAll(".select-app").forEach(el => {
-            el.addEventListener("click", function () {
-                let appName = this.getAttribute("data-app");
-                fetch("/select-app", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ application: appName })
-                }).then(response => {
-                    if (response.ok) {
-                        window.location.reload(); // Refresh the page to show active sessions
-                    } else {
-                        console.error("Failed to start session");
-                    }
-                }).catch(error => console.error("Error:", error));
-                document.getElementById("select-app-popup").classList.add("hidden");
-            });
-        });
-    </script>
-</body>
-
-</html>
+    });
+</script>
+{% endblock %}
