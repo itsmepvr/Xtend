@@ -1,5 +1,4 @@
 """Flask routes for handling application selection, streaming, and session management."""
-# pylint: disable=no-member
 import queue
 import uuid
 import time
@@ -7,10 +6,10 @@ import asyncio
 import cv2
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from app.server import app, app_sessions, logger, templates
-from app.utils import get_open_applications, get_local_ip
-from app.capture import AppCapturer
-from config import Config
+from xtend.app import app, app_sessions, logger, templates
+from xtend.utils import get_open_applications, get_local_ip
+from xtend.capture import AppCapturer
+from xtend.config import settings
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -24,7 +23,7 @@ async def index(request: Request):
             "curr_apps": applications, 
             "active_sessions": app_sessions,
             "server_ip": server_ip,
-            "server_port": Config.PORT,
+            "server_port": settings.PORT,
         })
     except Exception as err:
         logger.error("Error rendering index page: %s", err, exc_info=True)
@@ -50,7 +49,7 @@ async def sessions(request: Request):
             "request": request,  
             "active_sessions": app_sessions,
             "server_ip": server_ip,
-            "server_port": Config.PORT,
+            "server_port": settings.PORT,
         })
     except Exception as err:
         logger.error("Error rendering index page: %s", err, exc_info=True)

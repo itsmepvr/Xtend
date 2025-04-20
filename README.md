@@ -1,13 +1,18 @@
-# Xtend Screen
+# Xtend
 
-This project enables any device with a web browser to be used as a secondary screen for your computer. It captures the screen of specific applications running on the desktop and streams them to a browser for display. Developed using Python and **FastAPI**, it uses Xlib, Composite, and Display to capture the application’s screen in real-time and provide an interactive user experience.
+Extend any device with a web browser into a secondary screen for your computer. Xtend Screen captures the display of selected desktop applications in real time and streams them via a FastAPI server.
 
 ## Features
 
-- **Screen Sharing**: View and interact with any open application on your desktop directly in your browser.
-- **Device Flexibility**: Use any device with a web browser as a secondary screen for your computer.
-- **Real-Time Streaming**: Stream your selected application’s screen in real-time with minimal delay.
-- **Dynamic URL Generation**: Each application is assigned a unique URL for easy access and sharing.
+- **Screen Sharing:** Capture and stream any open application window on your desktop.
+
+- **Device Flexibility:** Use smartphones, tablets, or any web‑enabled device as a secondary display.
+
+- **Real-Time Performance:** Low‑latency streaming powered by FastAPI and Uvicorn.
+
+- **Dynamic URL Generation:** Each shared application receives a unique URL for easy access.
+
+- **Cross‑Platform Ready:** Works on Linux (X11/Composite), macOS (via pyobjc), and Windows (future support).
 
 ## Requirements
 
@@ -21,42 +26,138 @@ This project enables any device with a web browser to be used as a secondary scr
 
 ## Installation
 
-### 1. Clone the Repository
+#### Prerequisites (OS‑level)
 
-```bash
-git clone https://github.com/itsmepvr/Xtend.git
-cd Xtend
-```
+Before installing Python dependencies, ensure your system has the native X11 Composite libraries and utilities:
 
-### 2. Install Dependencies
-
-Install the necessary Python packages using `pip`:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Set Up Xlib and Composite
-
-Ensure that you have the necessary dependencies for screen capturing:
-
-- **For Linux**: Install Xlib and Composite extension packages.
-
-  ```bash
-  sudo apt-get install wmctrl x11-utils libxcomposite-dev libxrender-dev
+- **Linux (X11/Composite):**
+  ```
+  sudo apt-get update
+  sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+  ```
+- macOS (for screen capture support via PyObjC):
+  ```
+  brew update
+  brew install imagemagick  # install any additional native libs if needed
   ```
 
-- **For macOS**: Ensure that you have the appropriate libraries for screen capturing and display.
+You can install and run Xtend Screen via pip + setuptools or Poetry. Choose the workflow that suits you.
 
-### 4. Run the FastAPI Application
+#### A. Using Poetry (recommended)
 
-Start the FastAPI server to begin capturing and streaming the screens. We will use **Uvicorn** as the ASGI server to run the FastAPI app.
+1. Clone the repository:
 
-```bash
-uvicorn run:app --host 0.0.0.0 --port 9999 --reload
+   ```
+   git clone https://github.com/itsmepvr/Xtend.git
+   cd Xtend
+   ```
+
+2. Install Poetry (if not already):
+   ```
+   pip install poetry
+   ```
+3. Install dependencies & create venv:
+   ```
+   poetry install
+   ```
+4. Activate the Poetry shell:
+   ```
+   poetry shell
+   ```
+5. Run the application (Qt GUI + FastAPI server):
+   ```
+   xtend
+   ```
+
+#### B. Using pip + setuptools
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/itsmepvr/Xtend.git
+   cd Xtend
+   ```
+2. Create and activate a virtual environment:
+   ```
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Install the package:
+   ```
+   pip install -e .
+   ```
+5. Run the application (Qt GUI + FastAPI server):
+   ```
+   xtend
+   ```
+
+To run only the Web API server:
+
+```
+xtend --mode web
 ```
 
-By default, the app will be accessible at `http://127.0.0.1:9999`.
+## Configuration
+
+1. Copy the example file and fill in secret values:
+   ```
+   cp .env.example .env
+   ```
+2. Edit (project root):
+   ```
+   DEBUG=True
+   HOST=0.0.0.0
+   PORT=4563
+   SECRET_KEY=your-secret-key
+   ```
+3. Add .env to .gitignore:
+   `   .env`
+   Xtend loads settings via Pydantic’s BaseSettings, reading `.env` automatically.
+
+## Usage
+
+#### Qt GUI Mode (default)
+
+```
+xtend           # Launches Qt application + FastAPI server
+```
+
+#### Web Mode (API only)
+
+```
+xtend --mode web    # Starts FastAPI server without Qt
+```
+
+#### Direct Uvicorn (development)
+
+```
+uvicorn xtend.server:app --host 0.0.0.0 --port 9999 --reload
+```
+
+Open your browser at http://127.0.0.1:9999 to view available applications.
+
+## Packaging Executables
+
+#### Build scripts
+
+A sample build script is available at `scripts/build_exe.sh`:
+
+```
+#!/usr/bin/env bash
+pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed
+pyinstaller --onefile --name xtend-web src/xtend/cli.py --add-data "src/xtend/static:static" --add-data "src/xtend/templates:templates"
+```
+
+Run:
+
+```
+bash scripts/build_exe.sh
+```
+
+Binaries will be in `dist/` for distribution.
 
 ## Test Cases
 
@@ -75,14 +176,21 @@ PYTHONPATH=$(pwd) pytest
 
 ## Contributing
 
-We welcome contributions to improve the functionality and features of the Secondary Screen project. To contribute:
+We welcome contributions! Please follow these steps:
 
 1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Make your changes.
-4. Commit your changes (`git commit -am 'Add new feature'`).
-5. Push to your forked repository (`git push origin feature-branch`).
-6. Create a pull request.
+
+2. Create a new branch: git checkout -b feature/my-new-feature.
+
+3. Install dependencies and run tests.
+
+4. Make your changes and commit: git commit -m "Add awesome feature".
+
+5. Push to your fork: git push origin feature/my-new-feature.
+
+6. Open a Pull Request and describe your changes.
+
+7. Please adhere to the existing code style and keep feature branches focused.
 
 ## License
 

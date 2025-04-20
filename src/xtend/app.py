@@ -41,5 +41,4 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 # Application sessions store
 app_sessions: dict = {}
 
-# pylint: disable=unused-import
-from app import views  # pylint: disable=wrong-import-position
+from xtend import views

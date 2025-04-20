@@ -5,9 +5,9 @@ import requests
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtCore import QUrl
-from config import Config
+from xtend.config import settings
 
-FASTAPI_URL = f"http://{Config.HOST}:{Config.PORT}"
+FASTAPI_URL = f"http://{settings.HOST}:{settings.PORT}"
 
 class XtendScreenQt(QWidget): # pylint: disable=too-few-public-methods
     """Qt Application with embedded FastAPI UI"""
@@ -31,7 +31,7 @@ class XtendScreenQt(QWidget): # pylint: disable=too-few-public-methods
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                response = requests.get(f"http://{Config.HOST}:{Config.PORT}", timeout=5)
+                response = requests.get(f"http://{settings.HOST}:{settings.PORT}", timeout=5)
                 if response.status_code == 200:
                     return  # Server is ready
             except requests.exceptions.ConnectionError:

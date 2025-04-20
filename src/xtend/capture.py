@@ -1,5 +1,4 @@
 "App screen capture module"
-# pylint: disable=no-member
 import subprocess
 import threading
 import time

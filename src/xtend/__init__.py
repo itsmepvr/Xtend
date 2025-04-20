@@ -3,9 +3,9 @@ import threading
 import sys
 import uvicorn
 from PySide6.QtWidgets import QApplication
-from app.qt_xtend import XtendScreenQt
-from app.server import app
-from config import Config
+from xtend.gui import XtendScreenQt
+from xtend.app import app
+from xtend.config import settings
 
 def start_application(mode:str="qt"):
     "Qt application with fastapi server"
@@ -22,4 +22,9 @@ def start_application(mode:str="qt"):
 
 def run_fastapi():
     "FastAPI server"
-    uvicorn.run(app, host=Config.HOST, port=Config.PORT, log_level="info")
+    uvicorn.run(
+        "xtend.app:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        # reload=settings.DEBUG,
+    )
