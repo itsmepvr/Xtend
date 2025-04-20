@@ -30,11 +30,28 @@ async def index(request: Request):
         logger.error("Error rendering index page: %s", err, exc_info=True)
         return JSONResponse({"error": "Error loading the page"}, status_code=500)
 
-@app.get("/sessions")
-async def sessions():
-    """Render the index page with available applications and active sessions."""
+@app.get("/about", response_class=HTMLResponse)
+async def about(request: Request):
+    """Render the about page."""
     try:
-        return JSONResponse({"sessions": app_sessions}, status_code=200)
+        logger.info("Rendering about page.")
+        return templates.TemplateResponse("about.html", {"request": request})
+    except Exception as err:
+        logger.error("Error rendering about page: %s", err, exc_info=True)
+        return JSONResponse({"error": "Error loading the page"}, status_code=500)
+
+@app.get("/sessions", response_class=HTMLResponse)
+async def sessions(request: Request):
+    """Render the sessions page with available applications and active sessions."""
+    try:
+        logger.info("Rendered index page with current applications.")
+        server_ip = get_local_ip()
+        return templates.TemplateResponse("index.html", {
+            "request": request,  
+            "active_sessions": app_sessions,
+            "server_ip": server_ip,
+            "server_port": Config.PORT,
+        })
     except Exception as err:
         logger.error("Error rendering index page: %s", err, exc_info=True)
         return JSONResponse({"error": "Error loading the page"}, status_code=500)
