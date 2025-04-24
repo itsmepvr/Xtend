@@ -82,6 +82,5 @@ uvicorn==0.34.0
 virtualenv==20.30.0
 websockets==15.0.1
 xcffib==1.7.1
--e git+ssh://git@github.com/itsmepvr/Xtend.git@96a829d5dc836909893841c61a6eb66f82d6d2b9#egg=xtend
 zipp==3.21.0
 zstandard==0.23.0
