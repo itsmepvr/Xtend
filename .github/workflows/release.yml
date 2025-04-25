@@ -1,8 +1,7 @@
 name: 📦 Release
 
 permissions:
-  contents: write
-  releases: write  # Added permissions
+  contents: write # This covers release creation and asset uploads
 
 on:
   push:
@@ -28,7 +27,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-publish:
-    needs: create-release  # Wait for the release job
+    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -53,6 +52,6 @@ jobs:
       - name: Upload binaries
         uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}  # From the first job
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           files: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
