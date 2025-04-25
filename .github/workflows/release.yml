@@ -1,6 +1,10 @@
 name: 📦 Release
 
 # Trigger on pushing a semver tag (e.g. v1.2.0)
+
+permissions:
+  contents: write
+
 on:
   push:
     tags:
@@ -8,26 +12,20 @@ on:
 
 jobs:
   build-and-publish:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.11"]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.11"
 
-      - name: Install system deps (Linux only)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
-
-      - name: Install Python deps
-        run: pip install -r requirements.txt pyinstaller
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller
 
       - name: Build executable
         run: |
@@ -39,18 +37,15 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }} # e.g. v1.2.0
+          tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            Initial release of Xtend Screen v${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries
         uses: softprops/action-gh-release@v1
         with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           files: dist/*
-
-    #   - name: Publish to PyPI
-    #     uses: pypa/gh-action-pypi-publish@v1
-    #     with:
-    #       user: __token__
-    #       password: ${{ secrets.PYPI_API_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
