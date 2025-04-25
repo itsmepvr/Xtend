@@ -1,0 +1,56 @@
+name: 📦 Release
+
+# Trigger on pushing a semver tag (e.g. v1.2.0)
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-and-publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install system deps (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
+                      --add-data "src/xtend/static:static" \
+                      --add-data "src/xtend/templates:templates"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }} # e.g. v1.2.0
+          name: Release ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+
+    #   - name: Publish to PyPI
+    #     uses: pypa/gh-action-pypi-publish@v1
+    #     with:
+    #       user: __token__
+    #       password: ${{ secrets.PYPI_API_TOKEN }}
