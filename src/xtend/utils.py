@@ -4,6 +4,7 @@ import base64
 import platform
 import subprocess
 import socket
+import random
 
 try:
     import psutil  # Used for Linux process retrieval
@@ -167,6 +168,16 @@ def get_local_ip():
     finally:
         s.close()
     return local_ip
+
+def generate_session_id(app_sessions: dict) -> str:
+    """
+    Generate a unique 4-digit session ID (0000–9999),
+    retrying if there’s a collision in app_sessions.
+    """
+    while True:
+        sid = f"{random.randint(0, 9999):04d}"
+        if sid not in app_sessions:
+            return sid
 
 if __name__ == '__main__':
     print("Open applications:", get_open_applications())

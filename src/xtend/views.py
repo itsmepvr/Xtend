@@ -7,7 +7,7 @@ import cv2
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from xtend.app import app, app_sessions, logger, templates
-from xtend.utils import get_open_applications, get_local_ip
+from xtend.utils import get_open_applications, get_local_ip, generate_session_id
 from xtend.capture import AppCapturer
 from xtend.config import settings
 
@@ -69,7 +69,6 @@ async def sessions(request: Request):
 @app.post("/select-app")
 async def handle_selection(application: str = Form(...)):
     """Handle selection of an application for screen capture."""
-    print(application)
     if not application:
         raise HTTPException(status_code=400, detail="Application is required")
 
@@ -96,8 +95,7 @@ async def handle_selection(application: str = Form(...)):
 @app.post("/select-screen")
 async def handle_fullscreen_selection():
     """Handle selection of full screen capture."""
-    session_id = str(uuid.uuid4())
-    print(session_id)
+    session_id = str(generate_session_id(app_sessions))
     try:
         logger.info("Starting full screen capture with session ID %s", session_id)
         capturer = AppCapturer(capture_mode='full_screen')
