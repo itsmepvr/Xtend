@@ -1,7 +1,7 @@
 name: 📦 Release
 
 permissions:
-  contents: write # This covers release creation and asset uploads
+  contents: write
 
 on:
   push:
@@ -45,9 +45,16 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
-                      --add-data "src/xtend/static:static" \
-                      --add-data "src/xtend/templates:templates"
+          if ($IsWindows) {
+            pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed `
+                        --add-data "src/xtend/static;static" `
+                        --add-data "src/xtend/templates;templates"
+          } else {
+            pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
+                        --add-data "src/xtend/static:static" \
+                        --add-data "src/xtend/templates:templates"
+          }
+        shell: pwsh
 
       - name: Upload binaries
         uses: softprops/action-gh-release@v1
