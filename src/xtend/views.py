@@ -39,6 +39,16 @@ async def about(request: Request):
         logger.error("Error rendering about page: %s", err, exc_info=True)
         return JSONResponse({"error": "Error loading the page"}, status_code=500)
 
+@app.get("/get-applications")
+async def get_applications():
+    """Get list of open applications with thumbnails."""
+    try:
+        applications = get_open_applications()
+        return JSONResponse({"applications": applications})
+    except Exception as err:
+        logger.error("Error fetching applications: %s", err, exc_info=True)
+        return JSONResponse({"error": "Error fetching applications"}, status_code=500)
+
 @app.get("/sessions", response_class=HTMLResponse)
 async def sessions(request: Request):
     """Render the sessions page with available applications and active sessions."""
@@ -82,6 +92,27 @@ async def handle_selection(application: str = Form(...)):
     except Exception as err:
         logger.error("Failed to start capture for %s: %s", application, err, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start capture") from err
+
+@app.post("/select-screen")
+async def handle_fullscreen_selection():
+    """Handle selection of full screen capture."""
+    session_id = str(uuid.uuid4())
+    print(session_id)
+    try:
+        logger.info("Starting full screen capture with session ID %s", session_id)
+        capturer = AppCapturer(capture_mode='full_screen')
+        capturer.start_capture()
+
+        app_sessions[session_id] = {
+            'capturer': capturer,
+            'timestamp': time.time(),
+            'app_name': 'Full Screen'
+        }
+        logger.info("Full screen capture started successfully, session ID: %s", session_id)
+        return RedirectResponse(url="/", status_code=303)
+    except Exception as err:
+        logger.error("Failed to start full screen capture: %s", err, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start full screen capture") from err
 
 # WebSocket endpoint for streaming frames
 @app.websocket("/ws/{session_id}")

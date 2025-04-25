@@ -12,14 +12,21 @@ from Xlib.error import XError
 class AppCapturer:
     """Captures the screen of a specific application window using X11 and Composite extension."""
 
-    def __init__(self, app_name: str):
-        """Initialize the AppCapturer with the application name."""
+    def __init__(self, app_name: str = None, capture_mode: str = 'app'):
+        """Initialize the AppCapturer with the application name or capture mode."""
+        if capture_mode not in ['app', 'full_screen']:
+            raise ValueError("Invalid capture mode. Use 'app' or 'full_screen'.")
+        self.capture_mode = capture_mode
+        if self.capture_mode == 'app' and not app_name:
+            raise ValueError("app_name is required for 'app' capture mode.")
+        
         self.app_name = app_name
         self.running = False
-        self.frame_queue = queue.Queue(maxsize=2)  # Buffer to store frames
+        self.frame_queue = queue.Queue(maxsize=2)
         self.capture_thread = None
         self.disp = None
         self.window = None
+        self.redirected = False
 
     def _find_window(self) -> int | None:
         """Find the application window ID using wmctrl."""
@@ -42,20 +49,26 @@ class AppCapturer:
             raise RuntimeError("XComposite extension is not available on this system.")
 
     def start_capture(self) -> None:
-        """Start capturing the application's window."""
-        window_id = self._find_window()
-        if not window_id:
-            raise RuntimeError(f"Window for '{self.app_name}' not found")
+        """Start capturing the application's window or full screen."""
+        if self.capture_mode == 'app':
+            window_id = self._find_window()
+            if not window_id:
+                raise RuntimeError(f"Window for '{self.app_name}' not found")
 
-        self.disp = display.Display()
-        self._init_composite()
-        self.window = self.disp.create_resource_object('window', window_id)
-        composite.redirect_window(self.window, composite.RedirectManual)
-        self.disp.sync()
+            self.disp = display.Display()
+            self._init_composite()
+            self.window = self.disp.create_resource_object('window', window_id)
+            composite.redirect_window(self.window, composite.RedirectManual)
+            self.redirected = True
+            self.disp.sync()
+        else:
+            # Full screen mode
+            self.disp = display.Display()
+            self.window = self.disp.screen().root  # Root window
+            self.disp.sync()
 
         self.running = True
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
-
         self.capture_thread.start()
 
     def _capture_loop(self) -> None:
@@ -87,7 +100,7 @@ class AppCapturer:
 
     def cleanup(self) -> None:
         """Release resources properly."""
-        if self.window:
+        if self.redirected and self.window:
             try:
                 composite.unredirect_window(self.window, composite.RedirectManual)
             except XError:

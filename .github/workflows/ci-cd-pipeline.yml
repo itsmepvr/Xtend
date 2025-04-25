@@ -1,6 +1,6 @@
 name: CI/CD Pipeline
 
-# Trigger workflow on push to master/main or when PR is made to any branch except master/main
+# Trigger workflow on push to main/master or on any PR
 on:
   push:
     branches:
@@ -11,7 +11,6 @@ on:
       - "*"
 
 jobs:
-  # Job to run linting and tests
   lint_and_test:
     runs-on: ubuntu-latest
     steps:
@@ -21,30 +20,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.11" # Use your desired Python version
+          python-version: "3.11"
 
-      - name: Install Dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
 
       - name: Install System Dependencies
         run: |
-          sudo apt-get install wmctrl x11-utils libxcomposite-dev libxrender-dev
-
-      - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV # Set PYTHONPATH dynamically
+          sudo apt-get update
+          sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
 
       # - name: Run Tests
-      #   env:
-      #     PYTHONPATH: ${{ env.PYTHONPATH }} # Pass PYTHONPATH explicitly to the command
-      #   run: pytest
+      #   run: |
+      #     pytest
 
-  # Job to deploy the app (only on push to main/master)
   deploy:
+    needs: lint_and_test
     runs-on: ubuntu-latest
-    needs: lint_and_test # Ensure lint and tests are passed before deploying
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' # Only deploy on push to master or main
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -52,24 +47,27 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.11" # Use your desired Python version
+          python-version: "3.11"
 
-      - name: Install Dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
 
       - name: Install System Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+          sudo apt-get update
+          sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
 
       - name: Build App
         run: |
           echo "Building the app..."
+          # e.g. pyinstaller scripts/build_exe.sh
 
       - name: Deploy FastAPI app with Uvicorn
         run: |
-          # Example deploy commands for FastAPI app
-          echo "Deploying FastAPI app to production..."
-          # Start FastAPI app with Uvicorn (adjust the command based on your app structure)
-          nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload & # Assuming app
+          nohup uvicorn xtend.server:app \
+            --host 0.0.0.0 \
+            --port 8000 \
+            --workers 4 \
+            &>/dev/null &

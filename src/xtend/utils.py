@@ -1,5 +1,6 @@
 """Module to retrieve currently open applications across different OS platforms."""
 
+import base64
 import platform
 import subprocess
 import socket
@@ -8,6 +9,11 @@ try:
     import psutil  # Used for Linux process retrieval
 except ImportError:
     psutil = None
+
+from xtend.capture import AppCapturer
+import cv2
+import numpy as np
+from Xlib import display, X
 
 def get_open_applications() -> list[str]:
     """Retrieves a list of currently open applications.
@@ -101,14 +107,54 @@ def get_open_applications() -> list[str]:
         'Code': 'Visual Studio Code'
     }
 
-    processed_apps: set[str] = set()
-    for app in apps:
+    processed_apps = []
+    for app in sorted(apps):
         normalized = app_mapping.get(app, app)
         parts = normalized.split(' - ')
         final_name = app_mapping.get(parts[-1].strip(), parts[-1].strip())
-        processed_apps.add(final_name)
+        app_data = {"name": final_name}
+        try:
+            thumbnail = get_application_thumbnail(final_name)
+            app_data["thumbnail"] = thumbnail
+        except Exception as e:
+            app_data["thumbnail"] = None
+        
+        processed_apps.append(app_data)
 
-    return sorted(processed_apps)
+    return processed_apps
+
+def get_application_thumbnail(app_name: str) -> str:
+    """Get base64 encoded thumbnail for an application window."""
+    try:
+        capturer = AppCapturer(app_name)
+        window_id = capturer._find_window()
+        
+        if not window_id:
+            return None
+            
+        disp = display.Display()
+        window = disp.create_resource_object('window', window_id)
+        geom = window.get_geometry()
+        
+        # Capture original image
+        raw = window.get_image(0, 0, geom.width, geom.height, X.ZPixmap, 0xffffffff)
+        img = np.frombuffer(raw.data, dtype=np.uint8).reshape((geom.height, geom.width, 4))
+        frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+        # Increase target size and use better interpolation
+        target_width = 320
+        scale_factor = target_width / geom.width
+        target_height = int(geom.height * scale_factor)
+        
+        frame = cv2.resize(frame, 
+                          (target_width, target_height), 
+                          interpolation=cv2.INTER_AREA)  # Better for downscaling
+
+        # Encode with higher quality
+        _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        return base64.b64encode(buffer).decode('utf-8')
+    except:
+        print("Error")
 
 def get_local_ip():
     """Get the actual local IP address of the machine."""
