@@ -1,4 +1,4 @@
-name: 🚀 Multi-Platform Release (Portable + Installable)
+name: 🚀 Multi-Platform Release
 
 on:
   push:
@@ -29,35 +29,29 @@ jobs:
     needs: create-release
     strategy:
       matrix:
-        os: [linux-oldglibc, windows, macos]
-    runs-on: ${{ matrix.os == 'linux-oldglibc' && 'ubuntu-22.04' || matrix.os }}
+        os: [linux, windows, macos]
+    runs-on: ${{ matrix.os == 'linux' && 'ubuntu-22.04' || matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
       # Linux Build (Compatibility Mode)
       - name: Build Linux Binaries
-        if: matrix.os == 'linux-oldglibc'
-        uses: docker://ubuntu:18.04
+        if: matrix.os == 'linux'
+        uses: docker/setup-buildx-action@v3
         with:
-          entrypoint: /bin/bash
-          args: |
-            apt-get update && apt-get install -y python3.11 python3-pip upx-ucl build-essential fpm
-            pip install -r requirements.txt pyinstaller
-            pyinstaller --onefile --name xtend src/xtend/cli.py \
-              --add-data "src/xtend/static:static" \
-              --add-data "src/xtend/templates:templates" \
-              --upx-dir /usr/bin \
-              --exclude-module PyQt5.QtWebEngine
-            mkdir -p pkg/usr/local/bin
-            cp dist/xtend pkg/usr/local/bin/
-            fpm -s dir -t deb -n xtend -v ${{ github.ref_name }} \
-              --deb-compression=xz \
-              -C pkg \
-              --description "Xtend Screen Management Tool"
-            wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
-              && chmod +x appimagetool-x86_64.AppImage \
-              && ./appimagetool-x86_64.AppImage dist/xtend
+          platforms: linux/amd64
+
+      - name: Build Linux Packages
+        if: matrix.os == 'linux'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .github/Dockerfile
+          platforms: linux/amd64
+          outputs: type=local,dest=dist
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
 
       # Windows Build
       - name: Set up Windows
@@ -108,4 +102,5 @@ jobs:
             dist/*.exe
             dist/*.msi
             dist/*.dmg
+            dist/xtend*
           token: ${{ secrets.GITHUB_TOKEN }}
