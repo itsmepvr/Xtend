@@ -1,63 +1,78 @@
+# Build on Ubuntu 18.04 so we get glibc 2.27
 FROM --platform=linux/amd64 ubuntu:18.04
 
 ARG APP_VERSION
 
-# Install build dependencies
+# 1️⃣ System deps: Ruby for FPM, UPX, build tools
 RUN apt-get update && \
     apt-get install -y \
-    wget \
-    build-essential \
-    zlib1g-dev \
-    libncurses5-dev \
-    libgdbm-dev \
-    libnss3-dev \
-    libssl-dev \
-    libsqlite3-dev \
-    libreadline-dev \
-    libffi-dev \
-    curl \
-    libbz2-dev \
-    upx-ucl \
-    fpm \
+      wget \
+      build-essential \
+      zlib1g-dev \
+      libncurses5-dev \
+      libgdbm-dev \
+      libnss3-dev \
+      libssl-dev \
+      libsqlite3-dev \
+      libreadline-dev \
+      libffi-dev \
+      libbz2-dev \
+      ca-certificates \
+      upx \
+      ruby-full \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and compile Python 3.11
+# 2️⃣ FPM lives in a gem
+RUN gem install --no-document fpm
+
+# 3️⃣ Build & install Python 3.11
 RUN cd /tmp && \
     wget https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz && \
-    tar -xf Python-3.11.9.tgz && \
+    tar xf Python-3.11.9.tgz && \
     cd Python-3.11.9 && \
     ./configure --enable-optimizations && \
-    make -j $(nproc) && \
+    make -j"$(nproc)" && \
     make altinstall && \
-    ln -s /usr/local/bin/python3.11 /usr/local/bin/python3 && \
-    ln -s /usr/local/bin/pip3.11 /usr/local/bin/pip3 && \
-    rm -rf /tmp/Python-3.11*
+    rm -rf /tmp/Python-3.11.9*
+
+# 4️⃣ Symlink python3 → 3.11, pip3 → pip3.11
+RUN ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/pip3.11   /usr/local/bin/pip3
 
 WORKDIR /app
 COPY . .
 
-# Install Python requirements
-RUN python3 -m pip install --upgrade pip && \
-    pip install -r requirements.txt pyinstaller
+# 5️⃣ Install Python deps + PyInstaller
+RUN pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt pyinstaller
 
-# Build executable
-RUN pyinstaller --onefile --name xtend src/xtend/cli.py \
-    --add-data "src/xtend/static:static" \
-    --add-data "src/xtend/templates:templates" \
-    --upx-dir /usr/bin \
-    --exclude-module PyQt5.QtWebEngine
+# 6️⃣ Build the one-file executable & UPX-compress it
+RUN pyinstaller --clean --onefile --name xtend src/xtend/cli.py && \
+    upx --best dist/xtend
 
-# Create DEB package
+# 7️⃣ .deb via FPM
 RUN mkdir -p pkg/usr/local/bin && \
     cp dist/xtend pkg/usr/local/bin/ && \
-    fpm -s dir -t deb -n xtend -v $APP_VERSION \
+    fpm -s dir -t deb \
+        -n xtend \
+        -v "${APP_VERSION#v}" \
         --deb-compression=xz \
         -C pkg \
         --description "Xtend Screen Management Tool"
 
-# Create AppImage
-RUN wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
-    && chmod +x appimagetool-x86_64.AppImage \
-    && ./appimagetool-x86_64.AppImage dist/xtend
+# 8️⃣ Prepare AppDir for AppImage
+RUN mkdir -p AppDir/usr/bin \
+             AppDir/usr/share/applications \
+             AppDir/usr/share/icons/hicolor/256x256/apps && \
+    cp dist/xtend AppDir/usr/bin/ && \
+    cp src/xtend/resources/xtend.desktop AppDir/usr/share/applications/ && \
+    cp src/xtend/resources/xtend.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-CMD ["sh", "-c", "cp -r dist/* /github/workspace/dist/"]
+# 9️⃣ Download AppImageKit’s appimagetool & build
+RUN wget -qO appimagetool.AppImage \
+      https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
+    chmod +x appimagetool.AppImage && \
+    ./appimagetool.AppImage AppDir dist/xtend.AppImage
+
+# ⏩ Copy everything back to the Actions workspace
+CMD cp dist/* /github/workspace/dist/
