@@ -7,6 +7,8 @@ from xtend.gui import XtendScreenQt
 from xtend.app import app
 from xtend.config import settings
 
+__version__ = "0.0.1"
+
 def start_application(mode:str="qt"):
     "Qt application with fastapi server"
     if mode == "web":
@@ -26,5 +28,6 @@ def run_fastapi():
         "xtend.app:app",
         host=settings.HOST,
         port=settings.PORT,
-        # reload=settings.DEBUG,
+        reload=True,
+        reload_dirs=["src/xtend"]
     )
