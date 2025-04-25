@@ -1,9 +1,8 @@
 name: 📦 Release
 
-# Trigger on pushing a semver tag (e.g. v1.2.0)
-
 permissions:
   contents: write
+  releases: write  # Added permissions
 
 on:
   push:
@@ -11,8 +10,26 @@ on:
       - "v*.*.*"
 
 jobs:
-  build-and-publish:
+  create-release:
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            Initial release of Xtend Screen v${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-publish:
+    needs: create-release  # Wait for the release job
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -33,19 +50,9 @@ jobs:
                       --add-data "src/xtend/static:static" \
                       --add-data "src/xtend/templates:templates"
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          body: |
-            Initial release of Xtend Screen v${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload binaries
         uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.upload_url }}  # From the first job
           files: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
