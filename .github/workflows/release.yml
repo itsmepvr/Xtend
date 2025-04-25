@@ -43,18 +43,21 @@ jobs:
         run: |
           pip install -r requirements.txt pyinstaller
 
-      - name: Build executable
-        run: |
-          if ($IsWindows) {
-            pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed `
-                        --add-data "src/xtend/static;static" `
-                        --add-data "src/xtend/templates;templates"
-          } else {
-            pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
-                        --add-data "src/xtend/static:static" \
-                        --add-data "src/xtend/templates:templates"
-          }
+      - name: Build on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
+        run: |
+          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed `
+                      --add-data "src/xtend/static;static" `
+                      --add-data "src/xtend/templates;templates"
+
+      - name: Build on macOS and Linux
+        if: ${{ matrix.os != 'windows-latest' }}
+        shell: bash
+        run: |
+          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
+                      --add-data "src/xtend/static:static" \
+                      --add-data "src/xtend/templates:templates"
 
       - name: Upload binaries
         uses: softprops/action-gh-release@v1
