@@ -1,67 +1,142 @@
-name: 📦 Release
-
-permissions:
-  contents: write
+name: 📦 Release All Platforms (Portable + Installable)
 
 on:
   push:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Create GitHub Release
+      - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          body: |
-            Initial release of Xtend Screen v${{ github.ref_name }}
+          draft: true
+          prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  build-and-publish:
+  build-packages:
     needs: create-release
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-2022, macos-12]
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      # Setup Python and Node.js (if needed)
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      # Install system dependencies
+      - name: Install UPX and build tools
         run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-20.04" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y upx-ucl build-essential binutils-multiarch
+            sudo snap install --classic electron-installer
+          elif [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+            choco install upx innosetup -y
+          elif [[ "${{ matrix.os }}" == "macos-12" ]]; then
+            brew install upx create-dmg
+          fi
+
+      # Install Python dependencies
+      - name: Install Python requirements
+        run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      - name: Build on Windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: pwsh
+      # Build process
+      - name: Build Portable Executable
         run: |
-          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed `
-                      --add-data "src/xtend/static;static" `
-                      --add-data "src/xtend/templates;templates"
+          if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+            pyinstaller --onefile --name xtend src/xtend/cli.py --windowed `
+                        --add-data "src/xtend/static;static" `
+                        --add-data "src/xtend/templates;templates" `
+                        --upx-dir "C:\ProgramData\chocolatey\lib\upx\tools" `
+                        --exclude-module PyQt5.QtWebEngine `
+                        --exclude-module PyQt5.QtWebSockets
+          else
+            pyinstaller --onefile --name xtend src/xtend/cli.py --windowed \
+                        --add-data "src/xtend/static:static" \
+                        --add-data "src/xtend/templates:templates" \
+                        --upx-dir /usr/bin/upx \
+                        --exclude-module PyQt5.QtWebEngine \
+                        --exclude-module PyQt5.QtWebSockets \
+                        $( [[ "${{ matrix.os }}" == "macos-12" ]] && echo "--osx-bundle-identifier com.xtend.app" )
+          fi
 
-      - name: Build on macOS and Linux
-        if: ${{ matrix.os != 'windows-latest' }}
-        shell: bash
+      # Build installers
+      - name: Build Platform-specific Installers
         run: |
-          pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed \
-                      --add-data "src/xtend/static:static" \
-                      --add-data "src/xtend/templates:templates"
+          # Linux (DEB + AppImage)
+          if [[ "${{ matrix.os }}" == "ubuntu-20.04" ]]; then
+            # Create .deb package
+            mkdir -p dist/installer/usr/local/bin
+            cp dist/xtend dist/installer/usr/local/bin/
+            fpm -s dir -t deb -n xtend -v ${{ github.ref_name }} --prefix=/ \
+              --deb-compression=xz -C dist/installer \
+              --deb-field "Description=Xtend Screen Management Application"
 
-      - name: Upload binaries
+            # Create AppImage
+            ./linuxdeployqt-continuous-x86_64.AppImage dist/xtend/xtend -appimage
+
+          # Windows (Inno Setup)
+          elif [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+            iscc /F"xtend-${{ github.ref_name }}-setup" packaging/windows-installer.iss
+
+          # macOS (DMG + PKG)
+          elif [[ "${{ matrix.os }}" == "macos-12" ]]; then
+            # Create .dmg
+            create-dmg --volname "Xtend Installer" --background packaging/mac-background.png \
+              --window-pos 200 120 --window-size 800 400 --icon-size 100 \
+              --icon "xtend.app" 200 190 --app-drop-link 600 185 \
+              "dist/xtend-${{ github.ref_name }}.dmg" "dist/xtend.app"
+
+            # Create .pkg
+            productbuild --component "dist/xtend.app" /Applications \
+              --sign "Developer ID Installer: Your Name (XXXXXXXXXX)" \
+              "dist/xtend-${{ github.ref_name }}.pkg"
+          fi
+
+      # Upload artifacts
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          files: dist/*
+          files: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.exe
+            dist/*.msi
+            dist/*.dmg
+            dist/*.pkg
+            dist/xtend*
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Post-build cleanup to reduce cache size
+      - name: Cleanup build artifacts
+        run: |
+          rm -rf dist/build
+          rm -rf dist/installer
