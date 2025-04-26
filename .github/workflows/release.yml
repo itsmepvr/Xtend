@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: matrix.os == 'linux'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: xtend-linux
           path: dist/*
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: xtend-windows
           path: |
@@ -136,7 +136,7 @@ jobs:
 
       - name: Upload macOS artifacts
         if: matrix.os == 'macos'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: xtend-macos
           path: |
