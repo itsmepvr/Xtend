@@ -13,7 +13,7 @@ jobs:
 
       - name: Setup WiX
         run: |
-          choco install wixtoolset --version 3.14 -y
+          choco install wixtoolset
           $wixPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
           echo "$wixPath" | Out-File -FilePath $env:GITHUB_PATH -Append
 
