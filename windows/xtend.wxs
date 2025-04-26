@@ -3,10 +3,15 @@
   <Product Id="*" 
            Name="Xtend" 
            Language="1033" 
-           Version="1.0.0.0" 
-           Manufacturer="YourName" 
-           UpgradeCode="PUT-GUID-HERE">
-    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+           Version="$(var.Version)" 
+           Manufacturer="Venkata Ramana Pulugari" 
+           UpgradeCode="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
+    <Package InstallerVersion="500" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Manufacturer="Venkata Ramana Pulugari" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Xtend is already installed." />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder">
@@ -15,17 +20,19 @@
     </Directory>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="XtendExe" Guid="*">
-        <!-- point directly at the EXE in dist/ -->
-        <File Source="dist\xtend.exe" KeyPath="yes"/>
+      <Component Id="MainComponent" Guid="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
+        <File Id="XtendEXE" 
+              Source="$(sys.SOURCEFILEDIR)\..\dist\xtend.exe" 
+              KeyPath="yes" 
+              Checksum="yes"/>
       </Component>
     </DirectoryRef>
 
-    <Feature Id="DefaultFeature" Level="1">
-      <ComponentRef Id="XtendExe"/>
+    <Feature Id="MainFeature" Title="Xtend" Level="1">
+      <ComponentRef Id="MainComponent"/>
     </Feature>
 
-    <UIRef Id="WixUI_Mondo"/>
+    <UIRef Id="WixUI_InstallDir"/>
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
   </Product>
 </Wix>

@@ -91,21 +91,24 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          # Ensure dist directory exists
-          New-Item -ItemType Directory -Force -Path dist
-
-          # Build EXE
-          pyinstaller --clean --onefile --name xtend src/xtend/cli.py `
+          # 1) Build the one-file EXE
+          pyinstaller --clean --onefile --windowed --name xtend src/xtend/cli.py `
             --add-data "src/xtend/static;static" `
-            --add-data "src/xtend/templates;templates"
+            --add-data "src/xtend/templates;templates" `
+            --exclude-module PyQt5.QtWebEngine
 
-          # Compress with UPX
+          # 2) UPX-compress with --force to handle CF-Guard
           upx --best --force .\dist\xtend.exe
 
-          # WiX compilation - use full paths
-          $WIXPATH = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
-          & "$WIXPATH\candle.exe" -dVersion="${{ github.ref_name }}" -arch x64 .\windows\xtend.wxs -out .\dist\xtend.wixobj
-          & "$WIXPATH\light.exe" .\dist\xtend.wixobj -ext WixUIExtension -out .\dist\xtend-${{ github.ref_name }}.msi
+          # 3) Ensure your WiX source is present
+          if (-not (Test-Path windows/xtend.wxs)) {
+            Write-Error 'windows/xtend.wxs not found – please commit it to your repo'
+            exit 1
+          }
+
+          # 4) Compile & link with WiX
+          candle.exe windows/xtend.wxs -o xtend.wixobj
+          light.exe xtend.wixobj -o dist/xtend-${{ github.ref_name }}.msi
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows'
