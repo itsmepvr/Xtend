@@ -1,20 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="Xtend" Language="1033" Version="1.0.0.0" Manufacturer="YourName" UpgradeCode="PUT-GUID-HERE">
+  <Product Id="*" 
+           Name="Xtend" 
+           Language="1033" 
+           Version="1.0.0.0" 
+           Manufacturer="YourName" 
+           UpgradeCode="PUT-GUID-HERE">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder">
         <Directory Id="INSTALLFOLDER" Name="Xtend" />
       </Directory>
     </Directory>
+
     <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="XtendExe" Guid="*">
-        <File Source="$(var.ProjectDir)\dist\xtend.exe" KeyPath="yes"/>
+        <!-- point directly at the EXE in dist/ -->
+        <File Source="dist\xtend.exe" KeyPath="yes"/>
       </Component>
     </DirectoryRef>
+
     <Feature Id="DefaultFeature" Level="1">
       <ComponentRef Id="XtendExe"/>
     </Feature>
+
     <UIRef Id="WixUI_Mondo"/>
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
   </Product>
