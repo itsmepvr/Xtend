@@ -91,33 +91,36 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          # 1. Install required tools
-          choco install wixtoolset --version 3.11.2 -y
+          # 1. Use pre-installed WiX 3.14
+          $WIXPATH = "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
 
-          # 2. Import Chocolatey profile
-          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-
-          # 3. Get WiX path from registry
-          $WIXPATH = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{D8F4B0B7-5C1A-4E72-B2E6-7D84F0E0DCD9}').InstallLocation + "bin"
-
-          # 4. Verify WiX installation
+          # 2. Verify WiX installation
           if (-not (Test-Path "$WIXPATH\candle.exe")) {
-              Write-Error "WiX Toolset not found at $WIXPATH"
+              Write-Host "##[error] WiX not found at $WIXPATH"
+              Write-Host "Available WiX versions:"
+              Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*" | Select-Object Name
               exit 1
           }
-
-          # 5. Add to PATH
           $env:PATH = "$WIXPATH;$env:PATH"
 
-          # 6. Build application
-          pyinstaller --onefile --name xtend src/xtend/cli.py
+          # 3. Generate persistent UpgradeCode (first run only)
+          if (-not (Test-Path .windows/upgradecode.txt)) {
+              [guid]::NewGuid().ToString() | Out-File .windows/upgradecode.txt
+          }
+          $UPGRADE_CODE = Get-Content .windows/upgradecode.txt
 
-          # 7. Compress executable
+          # 4. Process WXS template
+          (Get-Content windows/xtend.wxs) `
+            -replace 'UPGRADE_CODE_GUID', $UPGRADE_CODE `
+            -replace 'COMPONENT_GUID', ([guid]::NewGuid().ToString()) |
+            Set-Content windows/xtend-autogen.wxs
+
+          # 5. Build and package
+          pyinstaller --onefile --name xtend src/xtend/cli.py
           upx --best --lzma --force dist\xtend.exe
 
-          # 8. Build MSI package
-          candle.exe -arch x64 -dVersion="${{ github.ref_name }}" .\windows\xtend.wxs -out dist\xtend.wixobj
-          light.exe -ext WixUIExtension -sw1076 -sw1079 dist\xtend.wixobj -out dist\xtend-${{ github.ref_name }}.msi
+          candle.exe -arch x64 -dVersion="${{ github.ref_name }}" windows/xtend-autogen.wxs -out dist\xtend.wixobj
+          light.exe -ext WixUIExtension -sw1076 -sw1079 -out dist\xtend-${{ github.ref_name }}.msi dist\xtend.wixobj
 
       #### macOS (macos-12) ────────────────────────────────
       - name: Install macOS tools
