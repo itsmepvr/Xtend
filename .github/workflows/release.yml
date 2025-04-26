@@ -91,35 +91,35 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          # 1. Use pre-installed WiX 3.14
+          # 1. Set paths
           $WIXPATH = "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
+          $UPGRADE_CODE_FILE = "windows\.upgradecode"  # Changed path
 
-          # 2. Verify WiX installation
+          # 2. Verify/create upgradecode file
+          if (-not (Test-Path $UPGRADE_CODE_FILE)) {
+              New-Item -Path $UPGRADE_CODE_FILE -Force
+              [guid]::NewGuid().ToString() | Out-File $UPGRADE_CODE_FILE
+          }
+          $UPGRADE_CODE = Get-Content $UPGRADE_CODE_FILE
+
+          # 3. Use pre-installed WiX
           if (-not (Test-Path "$WIXPATH\candle.exe")) {
-              Write-Host "##[error] WiX not found at $WIXPATH"
-              Write-Host "Available WiX versions:"
-              Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*" | Select-Object Name
+              Write-Error "WiX not found at $WIXPATH"
               exit 1
           }
           $env:PATH = "$WIXPATH;$env:PATH"
 
-          # 3. Generate persistent UpgradeCode (first run only)
-          if (-not (Test-Path .windows/upgradecode.txt)) {
-              [guid]::NewGuid().ToString() | Out-File .windows/upgradecode.txt
-          }
-          $UPGRADE_CODE = Get-Content .windows/upgradecode.txt
-
           # 4. Process WXS template
-          (Get-Content windows/xtend.wxs) `
+          (Get-Content windows\xtend.wxs) `
             -replace 'UPGRADE_CODE_GUID', $UPGRADE_CODE `
             -replace 'COMPONENT_GUID', ([guid]::NewGuid().ToString()) |
-            Set-Content windows/xtend-autogen.wxs
+            Set-Content windows\xtend-autogen.wxs
 
           # 5. Build and package
-          pyinstaller --onefile --name xtend src/xtend/cli.py
+          pyinstaller --onefile --name xtend src\xtend\cli.py
           upx --best --lzma --force dist\xtend.exe
 
-          candle.exe -arch x64 -dVersion="${{ github.ref_name }}" windows/xtend-autogen.wxs -out dist\xtend.wixobj
+          candle.exe -arch x64 -dVersion="${{ github.ref_name }}" windows\xtend-autogen.wxs -out dist\xtend.wixobj
           light.exe -ext WixUIExtension -sw1076 -sw1079 -out dist\xtend-${{ github.ref_name }}.msi dist\xtend.wixobj
 
       #### macOS (macos-12) ────────────────────────────────
