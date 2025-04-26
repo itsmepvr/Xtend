@@ -1,184 +1,94 @@
-name: 🚀 Multi-Platform Release
+name: 🚀 Cross-Platform Release
 
 on:
   push:
     tags:
       - "v*.*.*"
 
-permissions:
-  contents: write
-
 jobs:
-  # 1️⃣ Draft the Release
-  create-release:
-    runs-on: ubuntu-22.04
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+  windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create Release Draft
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          draft: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  # 2️⃣ Build & package on Linux, Windows, macOS
-  build-packages:
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: linux
-            runs-on: ubuntu-18.04
-          - os: windows
-            runs-on: windows-latest
-          - os: macos
-            runs-on: macos-12
-
-    runs-on: ${{ matrix['runs-on'] }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # 2.a) Python on every runner
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      # 2.b) Install your requirements + PyInstaller on Win/mac
-      - name: Install Python deps
-        if: matrix.os != 'linux'
+      - name: Setup WiX
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          choco install wixtoolset --version 3.14 -y
+          $wixPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
+          echo "$wixPath" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      #### Linux (Ubuntu 18.04 / glibc 2.27) ─────────────────
-      - name: Build & package Linux in Docker
-        if: matrix.os == 'linux'
-        uses: docker/setup-buildx-action@v3
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --name xtend src/xtend/cli.py
+          upx --best --lzma dist/xtend.exe
 
-      - name: Build & package Linux
-        if: matrix.os == 'linux'
-        uses: docker/build-push-action@v5
+      - name: Generate Installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v') -replace '[^0-9.]', ''
+          $msiVersion = ($version -split '\.' + @('0','0','0','0'))[0..3] -join '.'
+
+          if (-not (Test-Path windows/.upgradecode)) {
+              [guid]::NewGuid().ToString() | Out-File windows/.upgradecode
+          }
+          $upgradeCode = Get-Content windows/.upgradecode
+
+          (Get-Content windows/xtend.wxs) `
+            -replace 'VERSION_PLACEHOLDER', $msiVersion `
+            -replace 'UPGRADE_CODE_GUID', $upgradeCode `
+            -replace 'COMPONENT_GUID', ([guid]::NewGuid().ToString()) |
+            Set-Content windows/xtend-autogen.wxs
+
+          candle.exe -arch x64 -out dist/ windows/xtend-autogen.wxs
+          light.exe -ext WixUIExtension -out dist/xtend-${{ github.ref_name }}.msi dist/xtend-autogen.wixobj
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
+
+  linux:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build in Docker
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: .github/Dockerfile
-          platforms: linux/amd64
-          push: false
           outputs: type=local,dest=dist
           build-args: |
             APP_VERSION=${{ github.ref_name }}
 
-      - name: Upload Linux artifacts
-        if: matrix.os == 'linux'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: xtend-linux
+          name: linux-packages
           path: dist/*
 
-      #### Windows (windows-latest) ─────────────────────────
-      - name: Install Windows tools
-        if: matrix.os == 'windows'
-        run: choco install wixtoolset upx -y
-
-      - name: Build Windows EXE & MSI
-        if: matrix.os == 'windows'
-        shell: pwsh
-        run: |
-          # Create dist directory explicitly
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-
-          # Build EXE first
-          pyinstaller --onefile --name xtend src\xtend\cli.py
-          upx --best --lzma --force dist\xtend.exe
-
-          # Process version
-          $VERSION_TAG = "${{ github.ref_name }}".TrimStart('v') -replace '[^0-9.]', ''
-          $MSI_VERSION = ($VERSION_TAG -split '\.' + @('0','0','0','0'))[0..3] -join '.'
-
-          # Process WXS template
-          (Get-Content windows\xtend.wxs) `
-            -replace 'VERSION_PLACEHOLDER', $MSI_VERSION `
-            -replace 'UPGRADE_CODE_GUID', (Get-Content windows\.upgradecode) `
-            -replace 'COMPONENT_GUID', ([guid]::NewGuid().ToString()) |
-            Set-Content windows\xtend-autogen.wxs
-
-          # Build MSI with explicit paths
-          $DIST_PATH = Convert-Path -Path dist
-          candle.exe -arch x64 `
-            -dSourceDir="$DIST_PATH" `
-            -out "$DIST_PATH\xtend.wixobj" `
-            windows\xtend-autogen.wxs
-
-          light.exe -ext WixUIExtension `
-            -out "$DIST_PATH\xtend-${{ github.ref_name }}.msi" `
-            "$DIST_PATH\xtend.wixobj"
-
-      #### macOS (macos-12) ────────────────────────────────
-      - name: Install macOS tools
-        if: matrix.os == 'macos'
-        run: brew install upx create-dmg
-
-      - name: Build macOS .app and compress
-        if: matrix.os == 'macos'
-        run: |
-          pyinstaller --clean --onefile --windowed --name xtend src/xtend/cli.py \
-            --add-data "src/xtend/static:static" \
-            --add-data "src/xtend/templates:templates" \
-            --exclude-module PyQt5.QtWebEngine
-
-          # UPX the internal Mach-O
-          upx --best dist/xtend.app/Contents/MacOS/xtend
-
-      - name: Create macOS DMG
-        if: matrix.os == 'macos'
-        run: |
-          create-dmg \
-            --volname "Xtend" \
-            --overwrite \
-            dist/xtend.app \
-            dist/xtend-${{ github.ref_name }}.dmg
-
-      - name: Create macOS PKG
-        if: matrix.os == 'macos'
-        run: |
-          pkgbuild \
-            --root dist/xtend.app \
-            --identifier com.yourcompany.xtend \
-            --install-location /Applications \
-            dist/xtend-${{ github.ref_name }}.pkg
-
-      - name: Upload macOS artifacts
-        if: matrix.os == 'macos'
-        uses: actions/upload-artifact@v4
-        with:
-          name: xtend-macos
-          path: |
-            dist/*.dmg
-            dist/*.pkg
-
-  # 3️⃣ Push assets into the GitHub Release draft
-  publish:
-    needs: build-packages
-    runs-on: ubuntu-22.04
-    if: startsWith(github.ref, 'refs/tags/')
+  macos:
+    runs-on: macos-12
     steps:
-      - name: Publish Release Assets
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
+
+      - name: Build DMG
+        run: |
+          pyinstaller --onefile --windowed --name xtend src/xtend/cli.py
+          create-dmg dist/xtend.app
+
+      - uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          name: macos-packages
+          path: dist/*.dmg
+
+  release:
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
           files: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.exe
-            dist/*.msi
-            dist/*.dmg
-            dist/*.pkg
-            dist/xtend*
-          token: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/windows-packages/*
+            artifacts/linux-packages/*
+            artifacts/macos-packages/*

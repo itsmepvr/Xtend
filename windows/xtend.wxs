@@ -6,14 +6,11 @@
            Version="VERSION_PLACEHOLDER"
            Manufacturer="Venkata Ramana Pulugari" 
            UpgradeCode="UPGRADE_CODE_GUID">
-    <Package InstallerVersion="500"
-             Compressed="yes"
+    <Package InstallerVersion="500" 
+             Compressed="yes" 
              InstallScope="perMachine"/>
 
-    <!-- Add MediaTemplate -->
-    <MediaTemplate DiskPrompt="Xtend Installation Media" 
-                   CompressionLevel="high"
-                   EmbedCab="yes"/>
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high"/>
 
     <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
 
@@ -25,7 +22,7 @@
 
     <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="MainComponent" Guid="COMPONENT_GUID">
-        <File Source="$(sys.SOURCEFILEDIR)\..\dist\xtend.exe" KeyPath="yes"/>
+        <File Source="$(var.SourceDir)\xtend.exe" KeyPath="yes"/>
       </Component>
     </DirectoryRef>
 
@@ -35,6 +32,5 @@
 
     <UIRef Id="WixUI_InstallDir"/>
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
-    <File Source="$(var.SourceDir)\xtend.exe" KeyPath="yes"/>
   </Product>
 </Wix>
