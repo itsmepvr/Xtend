@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  # 1️⃣ Create the draft release
+  # 1️⃣ Create the GitHub Release draft
   create-release:
     runs-on: ubuntu-22.04
     outputs:
@@ -30,7 +30,7 @@ jobs:
   build-packages:
     needs: create-release
     strategy:
-      fail-fast: false # ← Moved here
+      fail-fast: false
       matrix:
         include:
           - os: linux
@@ -45,12 +45,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 2.a) Always set up Python on the runner
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      #### Linux (Ubuntu 18.04 / glibc 2.27)
+      # 2.b) Install pip, your requirements.txt and PyInstaller on Win/mac
+      - name: Install Python dependencies
+        if: matrix.os != 'linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      #### Linux (inside Docker) ────────────────────────────
       - name: Build & package Linux in Docker
         if: matrix.os == 'linux'
         uses: docker/setup-buildx-action@v3
@@ -74,20 +82,25 @@ jobs:
           name: xtend-linux
           path: dist/*
 
-      #### Windows (windows-latest)
+      #### Windows (windows-latest) ─────────────────────────
       - name: Install Windows tools
         if: matrix.os == 'windows'
         run: choco install wixtoolset upx -y
 
-      - name: Build Windows binary & installer
+      - name: Build Windows binary & MSI
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          # Build the one-file EXE
           pyinstaller --clean --onefile --windowed --name xtend src/xtend/cli.py `
             --add-data "src/xtend/static;static" `
             --add-data "src/xtend/templates;templates" `
             --exclude-module PyQt5.QtWebEngine
+
+          # UPX-compress
           upx --best .\dist\xtend.exe
+
+          # MSI via WiX
           candle windows/xtend.wxs -o xtend.wixobj
           light xtend.wixobj -o dist/xtend-${{ github.ref_name }}.msi
 
@@ -100,18 +113,20 @@ jobs:
             dist/xtend.exe
             dist/*.msi
 
-      #### macOS (macos-12)
+      #### macOS (macos-12) ──────────────────────────────────
       - name: Install macOS tools
         if: matrix.os == 'macos'
         run: brew install upx create-dmg
 
-      - name: Build macOS .app
+      - name: Build macOS .app and compress
         if: matrix.os == 'macos'
         run: |
           pyinstaller --clean --onefile --windowed --name xtend src/xtend/cli.py \
             --add-data "src/xtend/static:static" \
             --add-data "src/xtend/templates:templates" \
             --exclude-module PyQt5.QtWebEngine
+
+          # Compress the internal binary
           upx --best dist/xtend.app/Contents/MacOS/xtend
 
       - name: Create macOS DMG
@@ -141,7 +156,7 @@ jobs:
             dist/*.dmg
             dist/*.pkg
 
-  # 3️⃣ Publish artifacts to the Release
+  # 3️⃣ Publish all the built artifacts into the Release
   publish:
     needs: build-packages
     runs-on: ubuntu-22.04
