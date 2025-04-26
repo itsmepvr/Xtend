@@ -5,26 +5,27 @@
            Language="1033" 
            Version="VERSION_PLACEHOLDER"
            Manufacturer="Venkata Ramana Pulugari" 
-           UpgradeCode="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
-    <Package InstallerVersion="500" 
-             Compressed="yes" 
-             InstallScope="perMachine" 
-             Manufacturer="Venkata Ramana Pulugari" />
+           UpgradeCode="UPGRADE_CODE_GUID">
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"/>
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Xtend is already installed." />
+    <!-- Add MediaTemplate -->
+    <MediaTemplate DiskPrompt="Xtend Installation Media" 
+                   CompressionLevel="high"
+                   EmbedCab="yes"/>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder">
-        <Directory Id="INSTALLFOLDER" Name="Xtend" />
+        <Directory Id="INSTALLFOLDER" Name="Xtend"/>
       </Directory>
     </Directory>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="MainComponent" Guid="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
-        <File Id="XtendEXE" 
-              Source="$(sys.SOURCEFILEDIR)\..\dist\xtend.exe" 
-              KeyPath="yes" 
-              Checksum="yes"/>
+      <Component Id="MainComponent" Guid="COMPONENT_GUID">
+        <File Source="$(sys.SOURCEFILEDIR)\..\dist\xtend.exe" KeyPath="yes"/>
       </Component>
     </DirectoryRef>
 
