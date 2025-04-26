@@ -87,34 +87,38 @@ jobs:
         if: matrix.os == 'windows'
         run: choco install wixtoolset upx -y
 
+      - name: Install Windows SDK (prerequisite)
+        if: matrix.os == 'windows'
+        run: |
+          choco install -y windows-sdk-10.1
+          refreshenv
+
       - name: Build Windows EXE & MSI
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          # Ensure dist directory exists
-          New-Item -ItemType Directory -Force -Path dist
+          # 1. Install WiX with correct version
+          choco install wixtoolset --version 3.11.2 -y
 
-          # Build EXE
-          pyinstaller --clean --onefile --name xtend src/xtend/cli.py `
-            --add-data "src/xtend/static;static" `
-            --add-data "src/xtend/templates;templates"
+          # 2. Find actual WiX path (GitHub-hosted Windows runner specific)
+          $WIXPATH = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
 
-          # Compress with UPX
-          upx --best --force .\dist\xtend.exe
+          # 3. Verify WiX installation
+          if (-not (Test-Path "$WIXPATH\candle.exe")) {
+              Write-Error "WiX installation failed!"
+              Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*" -Recurse | ForEach-Object { Write-Host $_.FullName }
+              exit 1
+          }
 
-          # WiX compilation - use full paths
-          $WIXPATH = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
-          & "$WIXPATH\candle.exe" -dVersion="${{ github.ref_name }}" -arch x64 .\windows\xtend.wxs -out .\dist\xtend.wixobj
-          & "$WIXPATH\light.exe" .\dist\xtend.wixobj -ext WixUIExtension -out .\dist\xtend-${{ github.ref_name }}.msi
+          # 4. Add to PATH for current session
+          $env:PATH = "$WIXPATH;$env:PATH"
 
-      - name: Upload Windows artifacts
-        if: matrix.os == 'windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: xtend-windows
-          path: |
-            dist/xtend.exe
-            dist/*.msi
+          # 5. Build and package
+          pyinstaller --onefile --name xtend src/xtend/cli.py
+          upx --best --force dist/xtend.exe
+
+          candle.exe -arch x64 -dVersion="${{ github.ref_name }}" .\windows\xtend.wxs -out dist\xtend.wixobj
+          light.exe -ext WixUIExtension dist\xtend.wixobj -out dist\xtend-${{ github.ref_name }}.msi
 
       #### macOS (macos-12) ────────────────────────────────
       - name: Install macOS tools
