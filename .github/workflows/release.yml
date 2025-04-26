@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  # 1️⃣ Create a draft release so we can upload assets into it
+  # 1️⃣ Create a draft GitHub Release to upload into
   create-release:
     runs-on: ubuntu-22.04
     outputs:
@@ -26,34 +26,37 @@ jobs:
           draft: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # 2️⃣ Build for Linux, Windows, macOS in parallel
+  # 2️⃣ Build & package for Linux, Windows, macOS
   build-packages:
     needs: create-release
     strategy:
       matrix:
-        os: [linux, windows, macos]
-    # Linux on 18.04 → glibc 2.27; Win/mac use latest provided runners
-    runs-on: ${{ matrix.os == 'linux' && 'ubuntu-18.04' || matrix.os }}
+        include:
+          - os: linux
+            runs-on: ubuntu-18.04
+          - os: windows
+            runs-on: windows-latest
+          - os: macos
+            runs-on: macos-12
+      fail-fast: false
+
+    runs-on: ${{ matrix['runs-on'] }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Always install Python so PyInstaller works
+      # Always set up Python for PyInstaller
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      ### Linux: Docker build → .deb + AppImage
-      - name: Set up QEMU (Linux only)
-        if: matrix.os == 'linux'
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Buildx (Linux only)
+      ### ─── Linux (Ubuntu 18.04 / glibc 2.27) ───
+      - name: Build Linux in Docker
         if: matrix.os == 'linux'
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & package Linux in Docker
+      - name: Build & package Linux
         if: matrix.os == 'linux'
         uses: docker/build-push-action@v5
         with:
@@ -72,11 +75,10 @@ jobs:
           name: xtend-linux
           path: dist/*
 
-      ### Windows: .exe + .msi via WiX + UPX
-      - name: Install Windows tooling
+      ### ─── Windows (windows-latest) ───
+      - name: Install Windows tools
         if: matrix.os == 'windows'
-        run: |
-          choco install wixtoolset upx -y
+        run: choco install wixtoolset upx -y
 
       - name: Build Windows binary
         if: matrix.os == 'windows'
@@ -89,7 +91,6 @@ jobs:
       - name: Create Windows MSI
         if: matrix.os == 'windows'
         run: |
-          # Assumes you have windows/xtend.wxs in your repo (see earlier instructions)
           candle windows/xtend.wxs -o xtend.wixobj
           light xtend.wixobj -o dist/xtend-${{ github.ref_name }}.msi
 
@@ -102,11 +103,10 @@ jobs:
             dist/xtend.exe
             dist/*.msi
 
-      ### macOS: .dmg + .pkg + UPX
-      - name: Install macOS tooling
+      ### ─── macOS (macos-12) ───
+      - name: Install macOS tools
         if: matrix.os == 'macos'
-        run: |
-          brew install upx create-dmg
+        run: brew install upx create-dmg
 
       - name: Build macOS binary
         if: matrix.os == 'macos'
@@ -143,7 +143,7 @@ jobs:
             dist/*.dmg
             dist/*.pkg
 
-  # 3️⃣ Push everything into the GitHub Release
+  # 3️⃣ Publish all artifacts into the GitHub Release
   publish:
     needs: build-packages
     runs-on: ubuntu-22.04
