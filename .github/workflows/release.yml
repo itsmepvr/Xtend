@@ -91,23 +91,34 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          # Create dist directory explicitly
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
           # Build EXE first
           pyinstaller --onefile --name xtend src\xtend\cli.py
           upx --best --lzma --force dist\xtend.exe
 
-          # Process WXS template
-          $MSI_VERSION = "${{ github.ref_name }}".TrimStart('v') -replace '-.*', '' -split '\.' | ForEach-Object { $_ ?? 0 }
-          $MSI_VERSION = ($MSI_VERSION + @(0,0,0,0))[0..3] -join '.'
+          # Process version
+          $VERSION_TAG = "${{ github.ref_name }}".TrimStart('v') -replace '[^0-9.]', ''
+          $MSI_VERSION = ($VERSION_TAG -split '\.' + @('0','0','0','0'))[0..3] -join '.'
 
+          # Process WXS template
           (Get-Content windows\xtend.wxs) `
             -replace 'VERSION_PLACEHOLDER', $MSI_VERSION `
             -replace 'UPGRADE_CODE_GUID', (Get-Content windows\.upgradecode) `
             -replace 'COMPONENT_GUID', ([guid]::NewGuid().ToString()) |
             Set-Content windows\xtend-autogen.wxs
 
-          # Build MSI with correct paths
-          candle.exe -arch x64 -dWixVariables.SourceDir="$pwd\dist" windows\xtend-autogen.wxs -out dist\
-          light.exe -ext WixUIExtension -out dist\xtend-${{ github.ref_name }}.msi dist\xtend-autogen.wixobj
+          # Build MSI with explicit paths
+          $DIST_PATH = Convert-Path -Path dist
+          candle.exe -arch x64 `
+            -dSourceDir="$DIST_PATH" `
+            -out "$DIST_PATH\xtend.wixobj" `
+            windows\xtend-autogen.wxs
+
+          light.exe -ext WixUIExtension `
+            -out "$DIST_PATH\xtend-${{ github.ref_name }}.msi" `
+            "$DIST_PATH\xtend.wixobj"
 
       #### macOS (macos-12) ────────────────────────────────
       - name: Install macOS tools
