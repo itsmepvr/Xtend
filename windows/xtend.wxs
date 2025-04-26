@@ -5,7 +5,7 @@
            Language="1033" 
            Version="$(var.Version)" 
            Manufacturer="Venkata Ramana Pulugari" 
-           UpgradeCode="YOUR-GUID-HERE"> <!-- Replace with actual GUID -->
+           UpgradeCode="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
     <Package InstallerVersion="500" 
              Compressed="yes" 
              InstallScope="perMachine" 
@@ -20,7 +20,7 @@
     </Directory>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="MainComponent" Guid="YOUR-COMPONENT-GUID"> <!-- Replace GUID -->
+      <Component Id="MainComponent" Guid="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
         <File Id="XtendEXE" 
               Source="$(sys.SOURCEFILEDIR)\..\dist\xtend.exe" 
               KeyPath="yes" 
