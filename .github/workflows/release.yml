@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  # 1️⃣ Create the Release draft so we can attach assets
+  # 1️⃣ Create the draft release
   create-release:
     runs-on: ubuntu-22.04
     outputs:
@@ -26,10 +26,11 @@ jobs:
           draft: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # 2️⃣ Build & package on each OS
+  # 2️⃣ Build & package for Linux, Windows, macOS
   build-packages:
     needs: create-release
     strategy:
+      fail-fast: false # ← Moved here
       matrix:
         include:
           - os: linux
@@ -38,8 +39,8 @@ jobs:
             runs-on: windows-latest
           - os: macos
             runs-on: macos-12
+
     runs-on: ${{ matrix['runs-on'] }}
-    fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +77,7 @@ jobs:
       #### Windows (windows-latest)
       - name: Install Windows tools
         if: matrix.os == 'windows'
-        run: choco install pyinstaller upx innosetup -y
+        run: choco install wixtoolset upx -y
 
       - name: Build Windows binary & installer
         if: matrix.os == 'windows'
@@ -87,8 +88,8 @@ jobs:
             --add-data "src/xtend/templates;templates" `
             --exclude-module PyQt5.QtWebEngine
           upx --best .\dist\xtend.exe
-          # Define the version for Inno Setup
-          iscc /DMyAppVersion="$Env:GITHUB_REF_NAME" packaging/windows.iss
+          candle windows/xtend.wxs -o xtend.wixobj
+          light xtend.wixobj -o dist/xtend-${{ github.ref_name }}.msi
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows'
@@ -97,7 +98,7 @@ jobs:
           name: xtend-windows
           path: |
             dist/xtend.exe
-            dist\xtend-*-setup.exe
+            dist/*.msi
 
       #### macOS (macos-12)
       - name: Install macOS tools
@@ -111,7 +112,6 @@ jobs:
             --add-data "src/xtend/static:static" \
             --add-data "src/xtend/templates:templates" \
             --exclude-module PyQt5.QtWebEngine
-          # UPX-compress the inner executable
           upx --best dist/xtend.app/Contents/MacOS/xtend
 
       - name: Create macOS DMG
@@ -141,7 +141,7 @@ jobs:
             dist/*.dmg
             dist/*.pkg
 
-  # 3️⃣ Publish all artifacts into the GitHub Release
+  # 3️⃣ Publish artifacts to the Release
   publish:
     needs: build-packages
     runs-on: ubuntu-22.04
