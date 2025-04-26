@@ -87,38 +87,37 @@ jobs:
         if: matrix.os == 'windows'
         run: choco install wixtoolset upx -y
 
-      - name: Install Windows SDK (prerequisite)
-        if: matrix.os == 'windows'
-        run: |
-          choco install -y windows-sdk-10.1
-          refreshenv
-
       - name: Build Windows EXE & MSI
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          # 1. Install WiX with correct version
+          # 1. Install required tools
           choco install wixtoolset --version 3.11.2 -y
 
-          # 2. Find actual WiX path (GitHub-hosted Windows runner specific)
-          $WIXPATH = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
+          # 2. Import Chocolatey profile
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 
-          # 3. Verify WiX installation
+          # 3. Get WiX path from registry
+          $WIXPATH = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{D8F4B0B7-5C1A-4E72-B2E6-7D84F0E0DCD9}').InstallLocation + "bin"
+
+          # 4. Verify WiX installation
           if (-not (Test-Path "$WIXPATH\candle.exe")) {
-              Write-Error "WiX installation failed!"
-              Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*" -Recurse | ForEach-Object { Write-Host $_.FullName }
+              Write-Error "WiX Toolset not found at $WIXPATH"
               exit 1
           }
 
-          # 4. Add to PATH for current session
+          # 5. Add to PATH
           $env:PATH = "$WIXPATH;$env:PATH"
 
-          # 5. Build and package
+          # 6. Build application
           pyinstaller --onefile --name xtend src/xtend/cli.py
-          upx --best --force dist/xtend.exe
 
+          # 7. Compress executable
+          upx --best --lzma --force dist\xtend.exe
+
+          # 8. Build MSI package
           candle.exe -arch x64 -dVersion="${{ github.ref_name }}" .\windows\xtend.wxs -out dist\xtend.wixobj
-          light.exe -ext WixUIExtension dist\xtend.wixobj -out dist\xtend-${{ github.ref_name }}.msi
+          light.exe -ext WixUIExtension -sw1076 -sw1079 dist\xtend.wixobj -out dist\xtend-${{ github.ref_name }}.msi
 
       #### macOS (macos-12) ────────────────────────────────
       - name: Install macOS tools
