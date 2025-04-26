@@ -3,7 +3,7 @@
   <Product Id="*" 
            Name="Xtend" 
            Language="1033" 
-           Version="$(var.Version)" 
+           Version="VERSION_PLACEHOLDER"
            Manufacturer="Venkata Ramana Pulugari" 
            UpgradeCode="030c5df9-c0c4-4ace-9acf-3cbdc2f2a278">
     <Package InstallerVersion="500" 
