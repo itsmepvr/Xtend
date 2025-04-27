@@ -10,8 +10,6 @@ jobs:
   # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
   build_linux:
     runs-on: ubuntu-latest
-    container:
-      image: ubuntu:18.04
     env:
       DISPLAY: :0
     steps:
