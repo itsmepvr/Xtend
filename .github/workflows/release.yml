@@ -12,14 +12,13 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       DISPLAY: ":0"
-      QT_DEBUG_PLUGINS: 1
       VERSION: ${{ github.ref_name }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in Docker with system Qt
+      - name: Build in Docker with Qt fix
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/src \
@@ -27,24 +26,25 @@ jobs:
             ubuntu:20.04 \
             bash -c "
               set -ex
-              # Install system packages FIRST
+              # Install system Qt packages FIRST
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 python3.8 python3-pip python3.8-dev \
                 python3-pyqt5 python3-pyqt5.qtwebengine \
-                libxcb-xinerama0 libgl1 libnss3 libxrender1 libxcomposite1 \
-                libxslt1.1 libgconf-2-4 libasound2 libdbus-1-3 \
-                libxkbcommon-x11-0 libgl1-mesa-glx upx
+                libxcb-xinerama0 libgl1 libnss3 libxrender1 \
+                libxcomposite1 libxslt1.1 libgconf-2-4 libasound2 \
+                libdbus-1-3 libxkbcommon-x11-0 libgl1-mesa-glx \
+                qt5-default upx
 
-              # Install Python packages WITHOUT touching system Qt
-              python3 -m pip install --upgrade pip wheel
-              python3 -m pip install \
-                pyinstaller \
-                pillow \
-                pyqtwebengine \
-                --no-deps  # Critical to prevent Qt uninstall attempts
+              # Install Python packages WITHOUT system conflicts
+              python3 -m pip install --user --upgrade pip wheel
+              python3 -m pip install --user \
+                pyinstaller==5.13.0 \
+                pillow==10.0.0 \
+                pyqtwebengine==5.15.6 \
+                --no-deps
 
-              # Create PyInstaller hook
+              # Create PyInstaller hooks
               mkdir -p .pyinstaller-hooks
               cat > .pyinstaller-hooks/hook-PyQt5.QtWebEngineWidgets.py << 'EOF'
               from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
@@ -52,8 +52,8 @@ jobs:
               binaries = collect_dynamic_libs('PyQt5.QtWebEngineWidgets')
               EOF
 
-              # Build with explicit system paths
-              pyinstaller \
+              # Build with explicit paths
+              ~/.local/bin/pyinstaller \
                 --onefile --windowed \
                 --name xtend \
                 --icon src/xtend/resources/icon.png \
@@ -70,8 +70,7 @@ jobs:
               test -f dist/xtend && upx --lzma --best dist/xtend || exit 1
             "
 
-      # Rest of the steps remain the same as previous correct version
-      - name: Prepare AppImage tooling
+      - name: Prepare AppImage tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -86,12 +85,15 @@ jobs:
         run: |
           mkdir -p AppDir/usr/{bin,lib,share/icons/hicolor/256x256/apps}
 
+          # Copy build artifacts
           cp dist/xtend AppDir/usr/bin/
           cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/
 
+          # Validate desktop file
           desktop-file-validate src/xtend/resources/xtend.desktop
           cp src/xtend/resources/xtend.desktop AppDir/
 
+          # Bundle Qt components
           ./linuxdeploy \
             --appdir AppDir \
             --plugin qt \
