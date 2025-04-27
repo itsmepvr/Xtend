@@ -9,7 +9,9 @@ on:
 jobs:
   # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
   build_linux:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:18.04
     env:
       DISPLAY: :0
     steps:
@@ -88,52 +90,52 @@ jobs:
             xtend-${{ env.VERSION }}-linux.deb
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
-  build_windows:
-    runs-on: windows-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+  # build_windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.x"
 
-      - name: Install Windows build dependencies
-        shell: powershell
-        run: |
-          choco install -y nsis upx
-          python -m pip install --upgrade pip
-          pip install pyinstaller PyQt5
+  #     - name: Install Windows build dependencies
+  #       shell: powershell
+  #       run: |
+  #         choco install -y nsis upx
+  #         python -m pip install --upgrade pip
+  #         pip install pyinstaller PyQt5
 
-      - name: Extract version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+  #     - name: Extract version
+  #       shell: bash
+  #       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-      - name: Build Windows executable with PyInstaller
-        shell: cmd
-        run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
+  #     - name: Build Windows executable with PyInstaller
+  #       shell: cmd
+  #       run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
 
-      - name: Compress executable with UPX
-        shell: cmd
-        run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
+  #     - name: Compress executable with UPX
+  #       shell: cmd
+  #       run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
 
-      - name: Generate NSIS Installer
-        shell: cmd
-        run: |
-          makensis /DVERSION=%VERSION% windows\xtend.nsi
+  #     - name: Generate NSIS Installer
+  #       shell: cmd
+  #       run: |
+  #         makensis /DVERSION=%VERSION% windows\xtend.nsi
 
-      - name: Move & rename portable EXE to workspace root
-        shell: cmd
-        run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
+  #     - name: Move & rename portable EXE to workspace root
+  #       shell: cmd
+  #       run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
 
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows_artifacts
-          path: |
-            xtend-${{ env.VERSION }}-windows.exe
-            xtend-${{ env.VERSION }}-windows-installer.exe
+  #     - name: Upload Windows artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: windows_artifacts
+  #         path: |
+  #           xtend-${{ env.VERSION }}-windows.exe
+  #           xtend-${{ env.VERSION }}-windows-installer.exe
 
   # **macOS Build Job** – builds .app bundle and .dmg on macOS 12 (Monterey)
   build_macos:
@@ -176,15 +178,16 @@ jobs:
   # **Release Job** – creates a draft GitHub Release and attaches all artifacts
   create_release:
     runs-on: ubuntu-latest
-    needs: [build_linux, build_windows, build_macos]
+    # needs: [build_linux, build_windows, build_macos]
+    needs: [build_linux, build_macos]
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: linux_artifacts
-      - uses: actions/download-artifact@v3
-        with:
-          name: windows_artifacts
+      # - uses: actions/download-artifact@v3
+      #   with:
+      #     name: windows_artifacts
       - uses: actions/download-artifact@v3
         with:
           name: macos_artifacts
@@ -228,21 +231,21 @@ jobs:
           asset_name: xtend-${{ env.VERSION }}-linux.tar.gz
           asset_content_type: application/tar+gzip
 
-      - name: Upload Windows portable EXE
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.release.outputs.upload_url }}
-          asset_path: xtend-${{ env.VERSION }}-windows.exe
-          asset_name: xtend-${{ env.VERSION }}-windows.exe
-          asset_content_type: application/octet-stream
+      # - name: Upload Windows portable EXE
+      #   uses: actions/upload-release-asset@v1
+      #   with:
+      #     upload_url: ${{ steps.release.outputs.upload_url }}
+      #     asset_path: xtend-${{ env.VERSION }}-windows.exe
+      #     asset_name: xtend-${{ env.VERSION }}-windows.exe
+      #     asset_content_type: application/octet-stream
 
-      - name: Upload Windows installer EXE
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.release.outputs.upload_url }}
-          asset_path: xtend-${{ env.VERSION }}-windows-installer.exe
-          asset_name: xtend-${{ env.VERSION }}-windows-installer.exe
-          asset_content_type: application/octet-stream
+      # - name: Upload Windows installer EXE
+      #   uses: actions/upload-release-asset@v1
+      #   with:
+      #     upload_url: ${{ steps.release.outputs.upload_url }}
+      #     asset_path: xtend-${{ env.VERSION }}-windows-installer.exe
+      #     asset_name: xtend-${{ env.VERSION }}-windows-installer.exe
+      #     asset_content_type: application/octet-stream
 
       - name: Upload macOS .dmg installer
         uses: actions/upload-release-asset@v1
