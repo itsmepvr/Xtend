@@ -39,7 +39,7 @@ jobs:
               chown -R $(id -u):$(id -g) /src
 
               pip3 install --upgrade pip
-              pip3 install pyinstaller==5.13.0 PyQt5==5.15.9 pillow
+              pip3 install pyinstaller PyQt5 pillow
 
               # Build as regular user
               sudo -u $(id -un) \
