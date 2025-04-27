@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in Docker with verified artifacts
+      - name: Build in Docker with dependency fixes
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/src \
@@ -36,27 +36,32 @@ jobs:
                 libdbus-1-3 libxkbcommon-x11-0 libgl1-mesa-glx \
                 qt5-default upx
 
-              # Create non-root user with host UID/GID
+              # Create non-root user with proper PATH
               useradd -u $(id -u) -m builder
+              echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/builder/.bashrc
               mkdir -p /src/dist
               chown -R builder:builder /src
 
               # Build as non-root user
-              su builder -c '
-                pip install --user pyinstaller pillow pyqtwebengine --no-deps
-                mkdir -p ~/.local/bin
-                export PATH="$PATH:~/.local/bin"
+              su - builder -c '
+                pip install --user --upgrade pip wheel
+                pip install --user \
+                  pyinstaller==6.13.0 \
+                  pillow==10.4.0 \
+                  importlib-metadata==6.8.0  # Explicitly install required version:cite[3]:cite[6]
 
+                # Build with metadata collection
                 ~/.local/bin/pyinstaller \
                   --onefile --windowed \
                   --name xtend \
                   --icon src/xtend/resources/icon.png \
                   --collect-all PyQt5 \
                   --collect-all PyQt5.QtWebEngine \
-                  --collect-binaries=/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess \
-                  --hidden-import PyQt5.QtWebEngineWidgets \
-                  --hidden-import PyQt5.QtPrintSupport \
-                  --distpath /src/dist \
+                  --copy-metadata importlib_metadata \
+                  --copy-metadata try_pyinstaller \  # Replace with your package name:cite[3]
+                  --hidden-import importlib_metadata \
+                  --additional-hooks-dir=.pyinstaller-hooks \
+                  --paths /usr/lib/python3/dist-packages \
                   src/xtend/cli.py
 
                 # Verify build output
