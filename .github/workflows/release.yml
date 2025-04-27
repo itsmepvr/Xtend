@@ -12,13 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DISPLAY: :0
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
       - name: Extract version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
       - name: Build one-file binary in Ubuntu 18.04 container
         run: |
@@ -33,10 +35,14 @@ jobs:
                 python3-pip python3-pyqt5 upx dpkg-dev fakeroot libfuse2 wget
               pip3 install --upgrade pip
               pip3 install pyinstaller PyQt5 pillow
-              pyinstaller --onefile --windowed --static-libpython \
+
+              # Build your GUI/CLI into one file (no --static-libpython)
+              pyinstaller --onefile --windowed \
                 --name xtend \
                 --icon src/xtend/resources/icon.png \
                 src/xtend/cli.py
+
+              # Compress with UPX (ignore failures)
               upx --force -9 dist/xtend || true
             "
 
@@ -47,16 +53,13 @@ jobs:
 
       - name: Package AppImage on runner
         run: |
-          # 1) Create AppDir structure
           mkdir -p AppDir/usr/bin \
                    AppDir/usr/share/applications \
                    AppDir/usr/share/icons/hicolor/256x256/apps
 
-          # 2) Install binary & AppRun
           cp dist/xtend AppDir/usr/bin/xtend
           ln -s usr/bin/xtend AppDir/AppRun
 
-          # 3) Desktop entry (root and in applications/)
           cat > AppDir/xtend.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
@@ -67,14 +70,12 @@ jobs:
           Terminal=false
           Categories=Utility;
           EOF
-          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
 
-          # 4) Icons (root for AppImage, and in icon theme)
+          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
           cp src/xtend/resources/icon.png AppDir/xtend.png
           cp src/xtend/resources/icon.png \
             AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-          # 5) Download & run appimagetool
           wget -O appimagetool \
             https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
@@ -82,10 +83,8 @@ jobs:
 
       - name: Package tar.gz & .deb on runner
         run: |
-          # tar.gz of the one-file binary
           tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
 
-          # .deb packaging
           mkdir -p pkg/DEBIAN \
                    pkg/usr/bin \
                    pkg/usr/share/applications \
