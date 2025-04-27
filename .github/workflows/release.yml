@@ -10,6 +10,8 @@ jobs:
   # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
   build_linux:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:18.04
     env:
       DISPLAY: :0
     steps:
@@ -40,7 +42,7 @@ jobs:
 
       - name: Build Linux executable with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name xtend \
+          pyinstaller --onefile --windowed --static-libpython --name xtend \
             --icon src/xtend/resources/icon.png \
             src/xtend/cli.py
 
