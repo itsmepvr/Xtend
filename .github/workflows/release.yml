@@ -8,117 +8,96 @@ on:
 
 jobs:
   # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
-  build_linux:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:18.04
-    env:
-      DISPLAY: :0
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+build_linux:
+  runs-on: ubuntu-latest
+  env:
+    DISPLAY: :0
+  steps:
+    - name: Check out code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
+    - name: Extract version
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pyqt5 python3-pip upx dpkg-dev fakeroot libfuse2
-          wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool
+    - name: Build & package on Ubuntu 18.04 (glibc 2.27)
+      run: |
+        docker run --rm \
+          -e VERSION="${VERSION}" \
+          -v "${{ github.workspace }}":/src \
+          -w /src ubuntu:18.04 \
+          bash -lc "
+            set -e
 
-      - name: Install Python requirements
-        run: |
-          pip install --upgrade pip
-          pip install pyinstaller PyQt5
+            # System deps
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              python3-pip python3-pyqt5 upx dpkg-dev fakeroot libfuse2 wget
 
-      - name: Extract version
-        id: get_version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+            # AppImage tool
+            wget -O appimagetool \
+              https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+            chmod +x appimagetool
 
-      - name: Build Linux executable with PyInstaller
-        run: |
-          pyinstaller --onefile --windowed --static-libpython --name xtend \
-            --icon src/xtend/resources/icon.png \
-            src/xtend/cli.py
+            # Python & PyInstaller (+Pillow for macOS icon support if you ever reuse this)
+            pip3 install --upgrade pip
+            pip3 install pyinstaller PyQt5 pillow
 
-      - name: Compress binary with UPX
-        run: upx --force -9 dist/xtend || echo "UPX compression failed, continuing without it"
+            # Bundle CLI/GUI into one-file with static libpython
+            pyinstaller --onefile --windowed --static-libpython \
+              --name xtend \
+              --icon src/xtend/resources/icon.png \
+              src/xtend/cli.py
 
-      - name: Package Linux artifacts (AppImage, .deb, tar.gz)
-        run: |
-          # Prepare AppDir layout
-          mkdir -p AppDir/usr/bin \
-                   AppDir/usr/share/applications \
-                   AppDir/usr/share/icons/hicolor/256x256/apps
+            # UPX compress (ignore errors)
+            upx --force -9 dist/xtend || true
 
-          # Install the binary and AppRun stub
-          cp dist/xtend AppDir/usr/bin/xtend
-          ln -s usr/bin/xtend AppDir/AppRun
+            # ---- AppImage ----
+            mkdir -p AppDir/usr/bin \
+                     AppDir/usr/share/applications \
+                     AppDir/usr/share/icons/hicolor/256x256/apps
 
-          # Create desktop entry at AppDir root (for appimagetool)
-          cat > AppDir/xtend.desktop << 'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=Xtend
-          Comment=Extend any device with a web browser into a secondary screen for your computer.
-          Exec=xtend
-          Icon=xtend
-          Terminal=false
-          Categories=Utility;
-          EOF
+            cp dist/xtend AppDir/usr/bin/xtend
+            ln -s usr/bin/xtend AppDir/AppRun
 
-          # Also install into applications folder
-          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
+            printf '[Desktop Entry]\nType=Application\nName=Xtend\nComment=Extend any device with a web browser into a secondary screen for your computer.\nExec=xtend\nIcon=xtend\nTerminal=false\nCategories=Utility;\n' \
+              > AppDir/xtend.desktop
+            cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
+            cp src/xtend/resources/icon.png AppDir/xtend.png
+            cp src/xtend/resources/icon.png \
+              AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-          # Copy the icon where AppImage expects it (must match Icon=xtend)
-          cp src/xtend/resources/icon.png AppDir/xtend.png
+            ./appimagetool AppDir \"xtend-\${VERSION}-linux.AppImage\"
 
-          # Also install into the hicolor icon theme for .deb
-          cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
+            # ---- tar.gz ----
+            tar -czf \"xtend-\${VERSION}-linux.tar.gz\" -C dist xtend
 
-          # Build the AppImage
-          ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
+            # ---- .deb ----
+            mkdir -p pkg/DEBIAN \
+                     pkg/usr/bin \
+                     pkg/usr/share/applications \
+                     pkg/usr/share/icons/hicolor/256x256/apps
 
-          # Create a tarball of the one-file binary
-          tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
+            cp dist/xtend pkg/usr/bin/xtend
+            cp AppDir/usr/share/applications/xtend.desktop \
+               pkg/usr/share/applications/xtend.desktop
+            cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png \
+               pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-          # Prepare Debian package structure
-          mkdir -p pkg/DEBIAN \
-                   pkg/usr/bin \
-                   pkg/usr/share/applications \
-                   pkg/usr/share/icons/hicolor/256x256/apps
+            printf 'Package: xtend\nVersion: \${VERSION}\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: Your Name <you@example.com>\nDescription: Extend any device with a web browser into a secondary screen for your computer.\n' \
+              > pkg/DEBIAN/control
 
-          cp dist/xtend pkg/usr/bin/xtend
-          cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
-          cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
+            dpkg-deb --build pkg \"xtend-\${VERSION}-linux.deb\"
+          "
 
-          # Write control file (unquoted heredoc so $VERSION expands)
-          cat > pkg/DEBIAN/control << EOF
-          Package: xtend
-          Version: ${VERSION}
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Maintainer: Your Name <you@example.com>
-          Description: Extend any device with a web browser into a secondary screen for your computer.
-          EOF
-
-          # Build the .deb
-          dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux_artifacts
-          path: |
-            xtend-${{ env.VERSION }}-linux.AppImage
-            xtend-${{ env.VERSION }}-linux.tar.gz
-            xtend-${{ env.VERSION }}-linux.deb
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux_artifacts
+        path: |
+          xtend-${{ env.VERSION }}-linux.AppImage
+          xtend-${{ env.VERSION }}-linux.tar.gz
+          xtend-${{ env.VERSION }}-linux.deb
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
   # build_windows:
