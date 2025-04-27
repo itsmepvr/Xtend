@@ -42,7 +42,7 @@ jobs:
         run: |
           pyinstaller --onefile --windowed --name xtend \
             --icon src/xtend/resources/icon.png \
-            src/xtend/main.py
+            src/xtend/cli.py
 
       - name: Compress binary with UPX
         run: upx -9 dist/xtend
@@ -112,7 +112,7 @@ jobs:
 
       - name: Build Windows executable with PyInstaller
         shell: cmd
-        run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\main.py
+        run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
 
       - name: Compress executable with UPX
         shell: cmd
@@ -156,7 +156,7 @@ jobs:
       - name: Build macOS app with PyInstaller
         run: |
           pyinstaller --onefile --windowed --name Xtend \
-            --icon src/xtend/resources/icon.png src/xtend/main.py
+            --icon src/xtend/resources/icon.png src/xtend/cli.py
 
       - name: Compress macOS binary with UPX
         run: upx -9 dist/Xtend.app/Contents/MacOS/Xtend
