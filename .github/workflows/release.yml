@@ -70,13 +70,13 @@ jobs:
           Categories=Utility;
           EOF
 
-          # Also install the desktop entry for .deb packaging
+          # Also install into applications folder
           cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
 
           # Copy the icon where AppImage expects it (must match Icon=xtend)
           cp src/xtend/resources/icon.png AppDir/xtend.png
 
-          # Also install into the hicolor icon theme for .deb integration
+          # Also install into the hicolor icon theme for .deb
           cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
           # Build the AppImage
@@ -95,8 +95,8 @@ jobs:
           cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
           cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-          # Write control file
-          cat > pkg/DEBIAN/control << 'EOF'
+          # Write control file (unquoted heredoc so $VERSION expands)
+          cat > pkg/DEBIAN/control << EOF
           Package: xtend
           Version: ${VERSION}
           Section: utils
