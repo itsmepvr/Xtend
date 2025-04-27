@@ -20,7 +20,7 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-      - name: Build & package on Ubuntu 18.04 (glibc 2.27)
+      - name: Build one-file binary in Ubuntu 18.04 container
         run: |
           docker run --rm \
             -e VERSION="${VERSION}" \
@@ -28,67 +28,86 @@ jobs:
             -w /src ubuntu:18.04 \
             bash -lc "
               set -e
-
-              # System deps
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 python3-pip python3-pyqt5 upx dpkg-dev fakeroot libfuse2 wget
-
-              # AppImage tool
-              wget -O appimagetool \
-                https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-              chmod +x appimagetool
-
-              # Python & PyInstaller (+Pillow for macOS icon support if you ever reuse this)
               pip3 install --upgrade pip
               pip3 install pyinstaller PyQt5 pillow
-
-              # Bundle CLI/GUI into one-file with static libpython
-              pyinstaller --onefile --windowed \
+              pyinstaller --onefile --windowed --static-libpython \
                 --name xtend \
                 --icon src/xtend/resources/icon.png \
                 src/xtend/cli.py
-
-              # UPX compress (ignore errors)
               upx --force -9 dist/xtend || true
-
-              # ---- AppImage ----
-              mkdir -p AppDir/usr/bin \
-                      AppDir/usr/share/applications \
-                      AppDir/usr/share/icons/hicolor/256x256/apps
-
-              cp dist/xtend AppDir/usr/bin/xtend
-              ln -s usr/bin/xtend AppDir/AppRun
-
-              printf '[Desktop Entry]\nType=Application\nName=Xtend\nComment=Extend any device with a web browser into a secondary screen for your computer.\nExec=xtend\nIcon=xtend\nTerminal=false\nCategories=Utility;\n' \
-                > AppDir/xtend.desktop
-              cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
-              cp src/xtend/resources/icon.png AppDir/xtend.png
-              cp src/xtend/resources/icon.png \
-                AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
-
-              ./appimagetool AppDir \"xtend-\${VERSION}-linux.AppImage\"
-
-              # ---- tar.gz ----
-              tar -czf \"xtend-\${VERSION}-linux.tar.gz\" -C dist xtend
-
-              # ---- .deb ----
-              mkdir -p pkg/DEBIAN \
-                      pkg/usr/bin \
-                      pkg/usr/share/applications \
-                      pkg/usr/share/icons/hicolor/256x256/apps
-
-              cp dist/xtend pkg/usr/bin/xtend
-              cp AppDir/usr/share/applications/xtend.desktop \
-                pkg/usr/share/applications/xtend.desktop
-              cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png \
-                pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
-
-              printf 'Package: xtend\nVersion: \${VERSION}\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: Your Name <you@example.com>\nDescription: Extend any device with a web browser into a secondary screen for your computer.\n' \
-                > pkg/DEBIAN/control
-
-              dpkg-deb --build pkg \"xtend-\${VERSION}-linux.deb\"
             "
+
+      - name: Prepare packaging tools on runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 squashfs-tools wget dpkg-dev
+
+      - name: Package AppImage on runner
+        run: |
+          # 1) Create AppDir structure
+          mkdir -p AppDir/usr/bin \
+                   AppDir/usr/share/applications \
+                   AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # 2) Install binary & AppRun
+          cp dist/xtend AppDir/usr/bin/xtend
+          ln -s usr/bin/xtend AppDir/AppRun
+
+          # 3) Desktop entry (root and in applications/)
+          cat > AppDir/xtend.desktop << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Xtend
+          Comment=Extend any device with a web browser into a secondary screen for your computer.
+          Exec=xtend
+          Icon=xtend
+          Terminal=false
+          Categories=Utility;
+          EOF
+          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
+
+          # 4) Icons (root for AppImage, and in icon theme)
+          cp src/xtend/resources/icon.png AppDir/xtend.png
+          cp src/xtend/resources/icon.png \
+            AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
+
+          # 5) Download & run appimagetool
+          wget -O appimagetool \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
+
+      - name: Package tar.gz & .deb on runner
+        run: |
+          # tar.gz of the one-file binary
+          tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
+
+          # .deb packaging
+          mkdir -p pkg/DEBIAN \
+                   pkg/usr/bin \
+                   pkg/usr/share/applications \
+                   pkg/usr/share/icons/hicolor/256x256/apps
+
+          cp dist/xtend pkg/usr/bin/xtend
+          cp AppDir/usr/share/applications/xtend.desktop \
+             pkg/usr/share/applications/xtend.desktop
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png \
+             pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
+
+          cat > pkg/DEBIAN/control << EOF
+          Package: xtend
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Your Name <you@example.com>
+          Description: Extend any device with a web browser into a secondary screen for your computer.
+          EOF
+
+          dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
