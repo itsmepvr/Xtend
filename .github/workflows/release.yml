@@ -37,8 +37,8 @@ jobs:
               pip3 install pyinstaller PyQt5 pillow
 
               # Build your GUI/CLI into one file (no --static-libpython)
-              pyinstaller --onefile --windowed \
-                --name xtend \
+              pyinstaller --onefile --windowed --name xtend \
+                --add-data "/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms:platforms" \
                 --icon src/xtend/resources/icon.png \
                 src/xtend/cli.py
 
