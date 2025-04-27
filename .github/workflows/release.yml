@@ -44,7 +44,7 @@ jobs:
               pip3 install pyinstaller PyQt5 pillow
 
               # Bundle CLI/GUI into one-file with static libpython
-              pyinstaller --onefile --windowed --static-libpython \
+              pyinstaller --onefile --windowed \
                 --name xtend \
                 --icon src/xtend/resources/icon.png \
                 src/xtend/cli.py
