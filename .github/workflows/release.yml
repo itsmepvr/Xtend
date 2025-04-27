@@ -45,7 +45,7 @@ jobs:
             src/xtend/cli.py
 
       - name: Compress binary with UPX
-        run: upx -9 dist/xtend
+        run: upx --force -9 dist/xtend || echo "UPX compression failed, continuing without it"
 
       - name: Package Linux artifacts (AppImage, .deb, tar.gz)
         run: |
@@ -116,7 +116,7 @@ jobs:
 
       - name: Compress executable with UPX
         shell: cmd
-        run: upx -9 dist\xtend.exe
+        run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
 
       - name: Generate NSIS Installer
         shell: cmd
@@ -159,7 +159,7 @@ jobs:
             --icon src/xtend/resources/icon.png src/xtend/cli.py
 
       - name: Compress macOS binary with UPX
-        run: upx -9 dist/Xtend.app/Contents/MacOS/Xtend
+        run: upx --force -9 dist/Xtend.app/Contents/MacOS/Xtend || echo "UPX compression failed, continuing without it"
 
       - name: Package macOS artifacts (.app and .dmg)
         run: |
