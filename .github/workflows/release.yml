@@ -169,6 +169,7 @@ jobs:
   # **macOS Build Job** – builds .app bundle and .dmg on macOS 12 (Monterey)
   build_macos:
     runs-on: macos-latest
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -179,13 +180,12 @@ jobs:
           python-version: "3.x"
 
       - name: Install macOS build dependencies
-        run: |
-          brew install upx
+        run: brew install upx
 
       - name: Install Python requirements
         run: |
           pip install --upgrade pip
-          pip install pyinstaller PyQt5
+          pip install pyinstaller PyQt5 pillow   # ← added pillow
 
       - name: Extract version
         shell: bash
@@ -194,7 +194,8 @@ jobs:
       - name: Build macOS app with PyInstaller
         run: |
           pyinstaller --onefile --windowed --name Xtend \
-            --icon src/xtend/resources/icon.png src/xtend/cli.py
+            --icon src/xtend/resources/icon.png \
+            src/xtend/cli.py
 
       - name: Compress macOS binary with UPX
         run: |
@@ -204,8 +205,8 @@ jobs:
       - name: Package macOS artifacts (.app and .dmg)
         run: |
           hdiutil create -volname "Xtend" \
-            -srcfolder "dist/Xtend.app" -ov -format UDZO \
-            "xtend-${VERSION}-macos.dmg"
+            -srcfolder "dist/Xtend.app" \
+            -ov -format UDZO "xtend-${VERSION}-macos.dmg"
           ditto -c -k --sequesterRsrc --keepParent \
             "dist/Xtend.app" "xtend-${VERSION}-macos.app.zip"
 
