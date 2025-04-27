@@ -59,39 +59,39 @@ jobs:
             https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy-plugin-qt
 
-      - name: Package AppImage with linuxdeploy
-        run: |
-          # 1) Create AppDir from one-folder output
-          rm -rf AppDir
-          cp -r dist/xtend AppDir
-          mv AppDir/xtend AppDir/usr
-          mkdir -p AppDir/usr/bin
-          ln -s usr/xtend AppDir/usr/bin/xtend
+          - name: Package AppImage with linuxdeploy
+          run: |
+            # Download linuxdeploy core and the Qt plugin
+            wget -O linuxdeploy \
+              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+            chmod +x linuxdeploy
+            wget -O linuxdeploy-plugin-qt \
+              https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+            chmod +x linuxdeploy-plugin-qt
 
-          # 2) Place desktop file & icon in AppDir
-          cat > AppDir/xtend.desktop << 'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=Xtend
-          Comment=Extend any device with a web browser into a secondary screen for your computer.
-          Exec=xtend
-          Icon=xtend
-          Terminal=false
-          Categories=Utility;
-          EOF
-          cp AppDir/xtend.desktop AppDir/xtend.desktop
-          cp src/xtend/resources/icon.png AppDir/xtend.png
+            # Create a minimal desktop file on disk
+            cat > xtend.desktop << 'EOF'
+            [Desktop Entry]
+            Type=Application
+            Name=Xtend
+            Comment=Extend any device with a web browser into a secondary screen for your computer.
+            Exec=xtend
+            Icon=xtend
+            Terminal=false
+            Categories=Utility;
+            EOF
 
-          # 3) Run linuxdeploy with Qt plugin
-          ./linuxdeploy --appdir AppDir \
-                        --plugin qt \
-                        -i src/xtend/resources/icon.png \
-                        -d AppDir/xtend.desktop \
-                        --output appimage
+            # Run linuxdeploy: it will build AppDir for us and bundle all Qt libs/plugins
+            ./linuxdeploy \
+              --appdir AppDir \
+              --executable dist/xtend/xtend \
+              --plugin qt \
+              -d xtend.desktop \
+              -i src/xtend/resources/icon.png \
+              --output appimage
 
-          # 4) Rename generated AppImage
-          sha=$(ls *.AppImage | head -n1)
-          mv "$sha" "xtend-${VERSION}-linux.AppImage"
+            # Rename the generated AppImage to include the version
+            mv Xtend*.AppImage "xtend-${VERSION}-linux.AppImage"
 
       - name: Package tar.gz of the full folder
         run: |
