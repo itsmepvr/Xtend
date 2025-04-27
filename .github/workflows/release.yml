@@ -123,10 +123,9 @@ jobs:
         run: |
           makensis /DVERSION=%VERSION% windows\xtend.nsi
 
-      - name: Rename artifacts with version
+      - name: Move & rename portable EXE to workspace root
         shell: cmd
-        run: |
-          rename dist\xtend.exe xtend-%VERSION%-windows.exe
+        run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
