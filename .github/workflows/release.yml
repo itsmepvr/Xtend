@@ -49,15 +49,16 @@ jobs:
 
       - name: Package Linux artifacts (AppImage, .deb, tar.gz)
         run: |
+          # Prepare AppDir layout
           mkdir -p AppDir/usr/bin \
                    AppDir/usr/share/applications \
                    AppDir/usr/share/icons/hicolor/256x256/apps
 
-          # Install the binary and AppRun link
+          # Install the binary and AppRun stub
           cp dist/xtend AppDir/usr/bin/xtend
           ln -s usr/bin/xtend AppDir/AppRun
 
-          # Create desktop entry at AppDir root (required by appimagetool)
+          # Create desktop entry at AppDir root (for appimagetool)
           cat > AppDir/xtend.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
@@ -69,16 +70,19 @@ jobs:
           Categories=Utility;
           EOF
 
-          # Also install the desktop entry into applications dir
+          # Also install the desktop entry for .deb packaging
           cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
 
-          # Install the icon
+          # Copy the icon where AppImage expects it (must match Icon=xtend)
+          cp src/xtend/resources/icon.png AppDir/xtend.png
+
+          # Also install into the hicolor icon theme for .deb integration
           cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
           # Build the AppImage
           ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
 
-          # Create a tarball of the standalone binary
+          # Create a tarball of the one-file binary
           tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
 
           # Prepare Debian package structure
@@ -91,7 +95,7 @@ jobs:
           cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
           cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-          # Create control file
+          # Write control file
           cat > pkg/DEBIAN/control << 'EOF'
           Package: xtend
           Version: ${VERSION}
