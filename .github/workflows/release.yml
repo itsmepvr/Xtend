@@ -41,7 +41,7 @@ jobs:
               python3 -m pip install \
                 pyinstaller \
                 pillow \
-                pyqtwebengine==5.15.6 \
+                pyqtwebengine \
                 --no-deps  # Critical to prevent Qt uninstall attempts
 
               # Create PyInstaller hook
