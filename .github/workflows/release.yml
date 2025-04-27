@@ -1,17 +1,17 @@
 name: Release
 permissions:
-  contents: write # allow creating releases&#8203;:contentReference[oaicite:1]{index=1}
+  contents: write # allow creating releases
 on:
   push:
     tags:
-      - "v*" # triggers on new tag like v1.0.0&#8203;:contentReference[oaicite:2]{index=2}
+      - "v*" # triggers on new tag like v1.0.0
 
 jobs:
-  # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04 (glibc 2.27)
+  # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
   build_linux:
     runs-on: ubuntu-18.04
     env:
-      DISPLAY: :0 # required for PyQt5 GUI build (Xvfb can be used if needed)
+      DISPLAY: :0
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -25,35 +25,34 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pyqt5 python3-pip upx dpkg-dev fakeroot
-          # Download AppImage tool for packaging
           wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
-          # (Optional) Install patchelf if needed to adjust binary rpaths
+
       - name: Install Python requirements
         run: |
           pip install --upgrade pip
-          pip install pyinstaller PyQt5  # PyInstaller for bundling, PyQt5 for GUI
+          pip install pyinstaller PyQt5
 
       - name: Extract version
         id: get_version
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
       - name: Build Linux executable with PyInstaller
         run: |
           pyinstaller --onefile --windowed --name xtend \
-            --icon assets/icon.png xtend/main.py
-          # PyInstaller generates `dist/xtend` (one-file ELF binary)
+            --icon src/xtend/resources/icon.png \
+            src/xtend/main.py
+
       - name: Compress binary with UPX
-        run: upx -9 dist/xtend # compress the binary to reduce size
+        run: upx -9 dist/xtend
 
       - name: Package Linux artifacts (AppImage, .deb, tar.gz)
         run: |
-          # Create AppImage (portable self-mounting image)
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
           cp dist/xtend AppDir/usr/bin/xtend
-          ln -s usr/bin/xtend AppDir/AppRun  # AppRun entrypoint
-          # Write desktop entry for AppImage integration
-          cat > AppDir/usr/share/applications/xtend.desktop <<'EOF'
+          ln -s usr/bin/xtend AppDir/AppRun
+          cat > AppDir/usr/share/applications/xtend.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
           Name=Xtend
@@ -63,18 +62,13 @@ jobs:
           Terminal=false
           Categories=Utility;
           EOF
-          # Add icon for AppImage (name without extension matches .desktop Icon field)&#8203;:contentReference[oaicite:3]{index=3}
-          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
-          # Build the AppImage using appimagetool
+          cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
           ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
-          # Package .tar.gz of the binary
           tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
-          # Create .deb package structure
           mkdir -p pkg/DEBIAN pkg/usr/bin pkg/usr/share/applications pkg/usr/share/icons/hicolor/256x256/apps
           cp dist/xtend pkg/usr/bin/xtend
           cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
           cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
-          # Create DEBIAN control file for .deb
           echo "Package: xtend" > pkg/DEBIAN/control
           echo "Version: ${VERSION}" >> pkg/DEBIAN/control
           echo "Section: utils" >> pkg/DEBIAN/control
@@ -113,31 +107,26 @@ jobs:
           pip install pyinstaller PyQt5
 
       - name: Extract version
-        shell: bash # use Git Bash on Windows for parameter expansion
+        shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
       - name: Build Windows executable with PyInstaller
         shell: cmd
-        run: |
-          pyinstaller --onefile --windowed --name xtend ^
-            --icon assets\\icon.ico xtend\\main.py
-          REM PyInstaller creates dist\\xtend.exe
+        run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\main.py
 
       - name: Compress executable with UPX
         shell: cmd
-        run: upx -9 dist\\xtend.exe
+        run: upx -9 dist\xtend.exe
 
       - name: Generate NSIS Installer
         shell: cmd
         run: |
-          rem Compile NSIS script to create installer
-          makensis /DVERSION=%VERSION% installer\\xtend.nsi
-          rem NSIS outputs xtend-%VERSION%-windows-installer.exe as defined in script
+          makensis /DVERSION=%VERSION% windows\xtend.nsi
 
       - name: Rename artifacts with version
         shell: cmd
         run: |
-          rename dist\\xtend.exe xtend-%VERSION%-windows.exe
+          rename dist\xtend.exe xtend-%VERSION%-windows.exe
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -167,19 +156,14 @@ jobs:
       - name: Build macOS app with PyInstaller
         run: |
           pyinstaller --onefile --windowed --name Xtend \
-            --icon assets/icon.png xtend/main.py
-          # PyInstaller will produce dist/Xtend.app (one-folder bundle) 
-          # and dist/Xtend (onefile CLI, not used since .app is preferred for GUI).
-          # Ensure the .app bundle is built (PyInstaller on macOS creates a .app for windowed apps)
+            --icon src/xtend/resources/icon.png src/xtend/main.py
 
       - name: Compress macOS binary with UPX
         run: upx -9 dist/Xtend.app/Contents/MacOS/Xtend
 
       - name: Package macOS artifacts (.app and .dmg)
         run: |
-          # Create a disk image (.dmg) for easy distribution
           hdiutil create -volname "Xtend" -srcfolder "dist/Xtend.app" -ov -format UDZO "xtend-${VERSION}-macos.dmg"
-          # Also zip the .app bundle (GitHub requires a single file upload)
           ditto -c -k --sequesterRsrc --keepParent "dist/Xtend.app" "xtend-${VERSION}-macos.app.zip"
 
       - name: Upload macOS artifacts
@@ -214,9 +198,9 @@ jobs:
         id: release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ github.ref_name }} # e.g. v1.0.0
-          release_name: ${{ github.ref_name }} # e.g. v1.0.0
-          draft: true # create as draft to review before publishing
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -243,7 +227,7 @@ jobs:
           upload_url: ${{ steps.release.outputs.upload_url }}
           asset_path: xtend-${{ env.VERSION }}-linux.tar.gz
           asset_name: xtend-${{ env.VERSION }}-linux.tar.gz
-          asset_content_type: application/tar+gzip # ensure correct content type&#8203;:contentReference[oaicite:4]{index=4}
+          asset_content_type: application/tar+gzip
 
       - name: Upload Windows portable EXE
         uses: actions/upload-release-asset@v1
