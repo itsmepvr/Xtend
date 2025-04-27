@@ -223,6 +223,8 @@ jobs:
     runs-on: ubuntu-latest
     # needs: [build_linux, build_windows, build_macos]
     needs: [build_linux]
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
