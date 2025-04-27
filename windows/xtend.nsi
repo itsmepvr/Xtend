@@ -18,7 +18,7 @@ RequestExecutionLevel user
 
 Section "Install"
   SetOutPath "$INSTDIR"
-  File "dist\\xtend.exe"                ; Include the built executable in installer
+  File "..\\dist\\xtend.exe"            ; Include the built executable in installer
   CreateShortcut "$SMPROGRAMS\\Xtend\\Xtend.lnk" "$INSTDIR\\xtend.exe" "" "$INSTDIR\\xtend.exe" 0
   CreateShortcut "$DESKTOP\\Xtend.lnk" "$INSTDIR\\xtend.exe" "" "$INSTDIR\\xtend.exe" 0
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
