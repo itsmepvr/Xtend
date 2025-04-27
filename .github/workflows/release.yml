@@ -49,10 +49,16 @@ jobs:
 
       - name: Package Linux artifacts (AppImage, .deb, tar.gz)
         run: |
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/bin \
+                   AppDir/usr/share/applications \
+                   AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # Install the binary and AppRun link
           cp dist/xtend AppDir/usr/bin/xtend
           ln -s usr/bin/xtend AppDir/AppRun
-          cat > AppDir/usr/share/applications/xtend.desktop << 'EOF'
+
+          # Create desktop entry at AppDir root (required by appimagetool)
+          cat > AppDir/xtend.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
           Name=Xtend
@@ -62,20 +68,41 @@ jobs:
           Terminal=false
           Categories=Utility;
           EOF
+
+          # Also install the desktop entry into applications dir
+          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
+
+          # Install the icon
           cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
+
+          # Build the AppImage
           ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
+
+          # Create a tarball of the standalone binary
           tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
-          mkdir -p pkg/DEBIAN pkg/usr/bin pkg/usr/share/applications pkg/usr/share/icons/hicolor/256x256/apps
+
+          # Prepare Debian package structure
+          mkdir -p pkg/DEBIAN \
+                   pkg/usr/bin \
+                   pkg/usr/share/applications \
+                   pkg/usr/share/icons/hicolor/256x256/apps
+
           cp dist/xtend pkg/usr/bin/xtend
           cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
           cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
-          echo "Package: xtend" > pkg/DEBIAN/control
-          echo "Version: ${VERSION}" >> pkg/DEBIAN/control
-          echo "Section: utils" >> pkg/DEBIAN/control
-          echo "Priority: optional" >> pkg/DEBIAN/control
-          echo "Architecture: amd64" >> pkg/DEBIAN/control
-          echo "Maintainer: Your Name <you@example.com>" >> pkg/DEBIAN/control
-          echo "Description: Extend any device with a web browser into a secondary screen for your computer." >> pkg/DEBIAN/control
+
+          # Create control file
+          cat > pkg/DEBIAN/control << 'EOF'
+          Package: xtend
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Your Name <you@example.com>
+          Description: Extend any device with a web browser into a secondary screen for your computer.
+          EOF
+
+          # Build the .deb
           dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
 
       - name: Upload Linux artifacts
