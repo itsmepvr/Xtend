@@ -8,163 +8,163 @@ on:
 
 jobs:
   # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
-  # build_linux:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     DISPLAY: :0
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v3
+  build_linux:
+    runs-on: ubuntu-latest
+    env:
+      DISPLAY: :0
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.x"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
 
-  #     - name: Install Linux build dependencies
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y python3-pyqt5 python3-pip upx dpkg-dev fakeroot libfuse2
-  #         wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-  #         chmod +x appimagetool
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pyqt5 python3-pip upx dpkg-dev fakeroot libfuse2
+          wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
 
-  #     - name: Install Python requirements
-  #       run: |
-  #         pip install --upgrade pip
-  #         pip install pyinstaller PyQt5
+      - name: Install Python requirements
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller PyQt5
 
-  #     - name: Extract version
-  #       id: get_version
-  #       shell: bash
-  #       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Extract version
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-  #     - name: Build Linux executable with PyInstaller
-  #       run: |
-  #         pyinstaller --onefile --windowed --name xtend \
-  #           --icon src/xtend/resources/icon.png \
-  #           src/xtend/cli.py
+      - name: Build Linux executable with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --name xtend \
+            --icon src/xtend/resources/icon.png \
+            src/xtend/cli.py
 
-  #     - name: Compress binary with UPX
-  #       run: upx --force -9 dist/xtend || echo "UPX compression failed, continuing without it"
+      - name: Compress binary with UPX
+        run: upx --force -9 dist/xtend || echo "UPX compression failed, continuing without it"
 
-  #     - name: Package Linux artifacts (AppImage, .deb, tar.gz)
-  #       run: |
-  #         # Prepare AppDir layout
-  #         mkdir -p AppDir/usr/bin \
-  #                  AppDir/usr/share/applications \
-  #                  AppDir/usr/share/icons/hicolor/256x256/apps
+      - name: Package Linux artifacts (AppImage, .deb, tar.gz)
+        run: |
+          # Prepare AppDir layout
+          mkdir -p AppDir/usr/bin \
+                   AppDir/usr/share/applications \
+                   AppDir/usr/share/icons/hicolor/256x256/apps
 
-  #         # Install the binary and AppRun stub
-  #         cp dist/xtend AppDir/usr/bin/xtend
-  #         ln -s usr/bin/xtend AppDir/AppRun
+          # Install the binary and AppRun stub
+          cp dist/xtend AppDir/usr/bin/xtend
+          ln -s usr/bin/xtend AppDir/AppRun
 
-  #         # Create desktop entry at AppDir root (for appimagetool)
-  #         cat > AppDir/xtend.desktop << 'EOF'
-  #         [Desktop Entry]
-  #         Type=Application
-  #         Name=Xtend
-  #         Comment=Extend any device with a web browser into a secondary screen for your computer.
-  #         Exec=xtend
-  #         Icon=xtend
-  #         Terminal=false
-  #         Categories=Utility;
-  #         EOF
+          # Create desktop entry at AppDir root (for appimagetool)
+          cat > AppDir/xtend.desktop << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Xtend
+          Comment=Extend any device with a web browser into a secondary screen for your computer.
+          Exec=xtend
+          Icon=xtend
+          Terminal=false
+          Categories=Utility;
+          EOF
 
-  #         # Also install into applications folder
-  #         cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
+          # Also install into applications folder
+          cp AppDir/xtend.desktop AppDir/usr/share/applications/xtend.desktop
 
-  #         # Copy the icon where AppImage expects it (must match Icon=xtend)
-  #         cp src/xtend/resources/icon.png AppDir/xtend.png
+          # Copy the icon where AppImage expects it (must match Icon=xtend)
+          cp src/xtend/resources/icon.png AppDir/xtend.png
 
-  #         # Also install into the hicolor icon theme for .deb
-  #         cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
+          # Also install into the hicolor icon theme for .deb
+          cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-  #         # Build the AppImage
-  #         ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
+          # Build the AppImage
+          ./appimagetool AppDir "xtend-${VERSION}-linux.AppImage"
 
-  #         # Create a tarball of the one-file binary
-  #         tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
+          # Create a tarball of the one-file binary
+          tar -czf "xtend-${VERSION}-linux.tar.gz" -C dist xtend
 
-  #         # Prepare Debian package structure
-  #         mkdir -p pkg/DEBIAN \
-  #                  pkg/usr/bin \
-  #                  pkg/usr/share/applications \
-  #                  pkg/usr/share/icons/hicolor/256x256/apps
+          # Prepare Debian package structure
+          mkdir -p pkg/DEBIAN \
+                   pkg/usr/bin \
+                   pkg/usr/share/applications \
+                   pkg/usr/share/icons/hicolor/256x256/apps
 
-  #         cp dist/xtend pkg/usr/bin/xtend
-  #         cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
-  #         cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
+          cp dist/xtend pkg/usr/bin/xtend
+          cp AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/xtend.desktop
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-  #         # Write control file (unquoted heredoc so $VERSION expands)
-  #         cat > pkg/DEBIAN/control << EOF
-  #         Package: xtend
-  #         Version: ${VERSION}
-  #         Section: utils
-  #         Priority: optional
-  #         Architecture: amd64
-  #         Maintainer: Your Name <you@example.com>
-  #         Description: Extend any device with a web browser into a secondary screen for your computer.
-  #         EOF
+          # Write control file (unquoted heredoc so $VERSION expands)
+          cat > pkg/DEBIAN/control << EOF
+          Package: xtend
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Your Name <you@example.com>
+          Description: Extend any device with a web browser into a secondary screen for your computer.
+          EOF
 
-  #         # Build the .deb
-  #         dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
+          # Build the .deb
+          dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
 
-  #     - name: Upload Linux artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: linux_artifacts
-  #         path: |
-  #           xtend-${{ env.VERSION }}-linux.AppImage
-  #           xtend-${{ env.VERSION }}-linux.tar.gz
-  #           xtend-${{ env.VERSION }}-linux.deb
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_artifacts
+          path: |
+            xtend-${{ env.VERSION }}-linux.AppImage
+            xtend-${{ env.VERSION }}-linux.tar.gz
+            xtend-${{ env.VERSION }}-linux.deb
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
-  # build_windows:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v3
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.x"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
 
-  #     - name: Install Windows build dependencies
-  #       shell: powershell
-  #       run: |
-  #         choco install -y nsis upx
-  #         python -m pip install --upgrade pip
-  #         pip install pyinstaller PyQt5
+      - name: Install Windows build dependencies
+        shell: powershell
+        run: |
+          choco install -y nsis upx
+          python -m pip install --upgrade pip
+          pip install pyinstaller PyQt5
 
-  #     - name: Extract version
-  #       shell: bash
-  #       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Extract version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-  #     - name: Build Windows executable with PyInstaller
-  #       shell: cmd
-  #       run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
+      - name: Build Windows executable with PyInstaller
+        shell: cmd
+        run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
 
-  #     - name: Compress executable with UPX
-  #       shell: cmd
-  #       run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
+      - name: Compress executable with UPX
+        shell: cmd
+        run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
 
-  #     - name: Generate NSIS Installer
-  #       shell: cmd
-  #       run: |
-  #         makensis /DVERSION=%VERSION% windows\xtend.nsi
+      - name: Generate NSIS Installer
+        shell: cmd
+        run: |
+          makensis /DVERSION=%VERSION% windows\xtend.nsi
 
-  #     - name: Move & rename portable EXE to workspace root
-  #       shell: cmd
-  #       run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
+      - name: Move & rename portable EXE to workspace root
+        shell: cmd
+        run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
 
-  #     - name: Upload Windows artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: windows_artifacts
-  #         path: |
-  #           xtend-${{ env.VERSION }}-windows.exe
-  #           xtend-${{ env.VERSION }}-windows-installer.exe
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows_artifacts
+          path: |
+            xtend-${{ env.VERSION }}-windows.exe
+            xtend-${{ env.VERSION }}-windows-installer.exe
 
   # **macOS Build Job** – builds .app bundle and .dmg on macOS 12 (Monterey)
   build_macos:
@@ -221,20 +221,19 @@ jobs:
   # **Release Job** – creates a draft GitHub Release and attaches all artifacts
   create_release:
     runs-on: ubuntu-latest
-    # needs: [build_linux, build_windows, build_macos]
-    needs: [build_macos]
+    needs: [build_linux, build_windows, build_macos]
     steps:
-      # - name: Download build artifacts
-      #   uses: actions/download-artifact@v3
-      #   with:
-      #     name: linux_artifacts
-      # - uses: actions/download-artifact@v3
-      #   with:
-      #     name: windows_artifacts
-      # - uses: actions/download-artifact@v3
-      #   with:
-      #     name: macos_artifacts
-      - name: Download build artifacts
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v2 # ← v2 is the current stable
+        with:
+          name: linux_artifacts
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: windows_artifacts
+
+      - name: Download macOS artifacts
         uses: actions/download-artifact@v2
         with:
           name: macos_artifacts
@@ -254,45 +253,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Upload Linux AppImage
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-linux.AppImage
-      #     asset_name: xtend-${{ env.VERSION }}-linux.AppImage
-      #     asset_content_type: application/octet-stream
+      - name: Upload Linux AppImage
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ env.VERSION }}-linux.AppImage
+          asset_name: xtend-${{ env.VERSION }}-linux.AppImage
+          asset_content_type: application/octet-stream
 
-      # - name: Upload Linux Debian package
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-linux.deb
-      #     asset_name: xtend-${{ env.VERSION }}-linux.deb
-      #     asset_content_type: application/vnd.debian.binary-package
+      - name: Upload Linux Debian package
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ env.VERSION }}-linux.deb
+          asset_name: xtend-${{ env.VERSION }}-linux.deb
+          asset_content_type: application/vnd.debian.binary-package
 
-      # - name: Upload Linux tar.gz archive
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-linux.tar.gz
-      #     asset_name: xtend-${{ env.VERSION }}-linux.tar.gz
-      #     asset_content_type: application/tar+gzip
+      - name: Upload Linux tar.gz archive
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ env.VERSION }}-linux.tar.gz
+          asset_name: xtend-${{ env.VERSION }}-linux.tar.gz
+          asset_content_type: application/tar+gzip
 
-      # - name: Upload Windows portable EXE
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-windows.exe
-      #     asset_name: xtend-${{ env.VERSION }}-windows.exe
-      #     asset_content_type: application/octet-stream
+      - name: Upload Windows portable EXE
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ env.VERSION }}-windows.exe
+          asset_name: xtend-${{ env.VERSION }}-windows.exe
+          asset_content_type: application/octet-stream
 
-      # - name: Upload Windows installer EXE
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-windows-installer.exe
-      #     asset_name: xtend-${{ env.VERSION }}-windows-installer.exe
-      #     asset_content_type: application/octet-stream
+      - name: Upload Windows installer EXE
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ env.VERSION }}-windows-installer.exe
+          asset_name: xtend-${{ env.VERSION }}-windows-installer.exe
+          asset_content_type: application/octet-stream
 
       - name: Upload macOS .dmg installer
         uses: actions/upload-release-asset@v1
