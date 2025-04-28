@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Xtend
+Comment=Extend any device with a web browser into a secondary screen for your computer.
+Exec=xtend
+Icon=xtend
+Terminal=false
+Categories=Utility;
