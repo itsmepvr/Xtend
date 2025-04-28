@@ -12,7 +12,7 @@ jobs:
     name: Build Linux executables
     runs-on: ubuntu-22.04
     env:
-      VERSION: ${{ github.ref_name }} # e.g. "v1.2.3"
+      VERSION: ${{ github.ref_name }} # e.g. "v0.0.1"
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -31,7 +31,8 @@ jobs:
       - name: Install Python packages
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install pyinstaller pyqt5
+          pip install -r requirements.txt    # all your runtime deps
+          pip install pyinstaller            # build tool
 
       - name: Build with PyInstaller (onedir, no UPX)
         run: |
@@ -90,7 +91,7 @@ jobs:
           Architecture: amd64
           Depends: python3, libxcb-xinerama0, libnss3, libgdk-pixbuf-2.0-0, libglu1-mesa, libpulse0, libegl1, libxi6, libxcomposite1, libxrandr2, libxtst6, libatk1.0-0, libpangocairo-1.0-0, libcairo2, libpango1.0-0, libgtk-3-0, libglib2.0-0, libgl1
           Maintainer: Your Name <you@example.com>
-          Description: Xtend — a self-contained PyQt5 screen-management tool
+          Description: Xtend — a self-contained PyQt5 + FastAPI desktop app
           EOF
 
       - name: Build Debian package
