@@ -39,6 +39,8 @@ jobs:
           pyinstaller --onedir --noupx \
             --name xtend --windowed \
             --icon src/xtend/resources/icon.png \
+            --add-data "src/xtend/static:xtend/static" \
+            --add-data "src/xtend/templates:xtend/templates" \
             src/xtend/cli.py
 
       - name: Prepare AppDir and normalize icon
