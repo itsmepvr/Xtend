@@ -18,91 +18,70 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          path: src # Explicit checkout path
-
-      - name: Verify source structure
-        run: |
-          echo "Repository contents:"
-          tree -L 3 src/
-          test -f src/xtend/cli.py || (echo "cli.py missing!"; exit 1)
+          path: src
 
       - name: Build binary in Docker
+        shell: bash
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/workspace \
             -w /workspace \
             ubuntu:20.04 \
-            bash -c "
-              set -ex
-              # Verify source files
-              ls -l src/xtend/cli.py
-              
-              # Install dependencies
-              apt-get update
-              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            bash -exc "
+              # Install system deps and create builder user
+              apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 python3.8 python3-pip python3.8-dev \
                 python3-pyqt5 python3-pyqt5.qtwebengine \
                 libxcb-xinerama0 libgl1 libnss3 libxrender1 \
                 libxcomposite1 libxslt1.1 libgconf-2-4 libasound2 \
-                libdbus-1-3 libxkbcommon-x11-0 libgl1-mesa-glx \
-                qt5-default upx-ucl
-
-              # Create build environment
+                libdbus-1-3 libxkbcommon-x11-0 libgl1-mesa-glx qt5-default upx-ucl sudo
               useradd -u 1001 -m builder
-              mkdir -p /workspace/dist
               chown -R builder:builder /workspace
 
-              # Build process
-              su - builder -c '
-                export PATH="\$HOME/.local/bin:\$PATH"
-                pip install --user --upgrade pip
-                pip install --user pyinstaller pillow importlib-metadata
+              su builder -c '
+                export PATH="$HOME/.local/bin:$PATH"
+                pip install --user --upgrade pip pyinstaller pillow importlib-metadata
 
-                # Build with verified paths
-                ~/.local/bin/pyinstaller \
-                  --onefile \
-                  --windowed \
+                # Build with PyInstaller
+                ~/.local/bin/pyinstaller --onefile --windowed \
                   --name xtend \
                   --icon src/xtend/resources/icon.png \
                   --collect-all PyQt5 \
                   --collect-all PyQt5.QtWebEngine \
-                  --collect-binaries /usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess \
                   --hidden-import PyQt5.QtWebEngineWidgets \
                   --hidden-import PyQt5.QtPrintSupport \
+                  --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
                   --distpath dist \
                   --workpath build \
                   src/xtend/cli.py
 
-                # Verify build output before compression
-                test -f dist/xtend || exit 1
+                test -f dist/xtend
                 upx --lzma --best dist/xtend
               '
-            "
+        env:
+          DEBIAN_FRONTEND: noninteractive
 
       - name: Verify build artifacts
         run: |
           ls -l dist/
-          test -f dist/xtend || (echo "Build failed!"; exit 1)
+          test -f dist/xtend
 
       - name: Prepare AppImage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            fuse libgtk-3-0 libnotify4 libxss1 libxtst6 \
-            libgl1-mesa-glx libvulkan1 desktop-file-utils
-          wget -qO linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy
+          sudo apt-get install -y fuse libgtk-3-0 libnotify4 libxss1 libxtst6 \
+            libgl1-mesa-glx libvulkan1 desktop-file-utils wget
+          wget -qO linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
 
       - name: Create AppImage
         run: |
           mkdir -p AppDir/usr/{bin,share/icons/hicolor/256x256/apps}
-
-          # Copy artifacts
           cp dist/xtend AppDir/usr/bin/
           cp src/xtend/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/
 
-          # Desktop integration
-          cat > AppDir/xtend.desktop << EOF
+          cat > AppDir/xtend.desktop <<EOF
           [Desktop Entry]
           Type=Application
           Name=Xtend
@@ -113,25 +92,23 @@ jobs:
           Terminal=false
           EOF
 
-          # Build AppImage
-          ./linuxdeploy \
+          ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
             --appdir AppDir \
             --plugin qt \
-            --output appimage \
             --desktop-file AppDir/xtend.desktop \
-            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/icon.png
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/icon.png \
+            --output appimage
 
-          mv Xtend*.AppImage "xtend-${VERSION}-linux.AppImage"
+          mv Xtend*.AppImage xtend-${VERSION}-linux.AppImage
 
       - name: Create Debian package
         run: |
           mkdir -p pkg/DEBIAN pkg/usr/{bin,share/{applications,icons/hicolor/256x256/apps}}
-
           install -m 755 dist/xtend pkg/usr/bin/xtend
           install -m 644 src/xtend/resources/icon.png pkg/usr/share/icons/hicolor/256x256/apps/
           install -m 644 src/xtend/resources/xtend.desktop pkg/usr/share/applications/
 
-          cat > pkg/DEBIAN/control << EOF
+          cat > pkg/DEBIAN/control <<EOF
           Package: xtend
           Version: ${VERSION/v/}
           Section: utils
@@ -142,7 +119,11 @@ jobs:
           Description: Screen Management Tool
           EOF
 
-          dpkg-deb --build pkg "xtend-${VERSION}-linux.deb"
+          dpkg-deb --build pkg xtend-${VERSION}-linux.deb
+
+      - name: Create tar.gz archive
+        run: |
+          tar czvf xtend-${VERSION}-linux.tar.gz -C dist xtend
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -151,6 +132,7 @@ jobs:
           path: |
             xtend-${{ env.VERSION }}-linux.AppImage
             xtend-${{ env.VERSION }}-linux.deb
+            xtend-${{ env.VERSION }}-linux.tar.gz
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
   # build_windows:
