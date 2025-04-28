@@ -33,10 +33,10 @@ jobs:
       - name: Install Python packages
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt    # all your runtime deps including PyQt5, FastAPI, etc.
-          pip install pyinstaller            # the build tool
+          pip install -r requirements.txt    # all your runtime deps
+          pip install pyinstaller            # build tool
 
-      - name: Build with PyInstaller (bundle PyQt5, static, templates, QtWebEngine)
+      - name: Build with PyInstaller (bundle all deps)
         run: |
           pyinstaller --onedir --noupx \
             --name xtend --windowed \
@@ -55,11 +55,13 @@ jobs:
             --collect-all python_multipart \
             src/xtend/cli.py
 
-      - name: Prepare AppDir and normalize icon
+      - name: Prepare AppDir, normalize icon & create AppRun
         run: |
+          # 1) AppDir layout
           mkdir -p dist/xtend.AppDir/usr/{bin,share/applications,share/icons/hicolor/256x256/apps}
           cp -r dist/xtend/* dist/xtend.AppDir/usr/bin/
 
+          # 2) .desktop
           cat > dist/xtend.AppDir/usr/share/applications/xtend.desktop <<EOF
           [Desktop Entry]
           Type=Application
@@ -70,11 +72,20 @@ jobs:
           Categories=Utility;
           EOF
 
+          # 3) icon
           convert src/xtend/resources/icon.png \
-            -resize 256x256 \
-            -density 96 \
-            -units PixelsPerInch \
+            -resize 256x256 -density 96 -units PixelsPerInch \
             dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
+
+          # 4) AppRun wrapper to force software rendering
+          cat > dist/xtend.AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          # Force Qt WebEngine to use software-only GL and disable GPU
+          export QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu --disable-software-rasterizer"
+          export QT_OPENGL="software"
+          exec "$APPDIR/usr/bin/xtend" "$@"
+          EOF
+          chmod +x dist/xtend.AppDir/AppRun
 
       - name: Download linuxdeploy
         run: |
