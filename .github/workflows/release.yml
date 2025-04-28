@@ -12,7 +12,7 @@ jobs:
     name: Build Linux executables
     runs-on: ubuntu-22.04
     env:
-      VERSION: ${{ github.ref_name }} # e.g. "v0.0.1"
+      VERSION: ${{ github.ref_name }} # e.g. "v1.2.3"
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -76,7 +76,7 @@ jobs:
             --output appimage
           mv Xtend*.AppImage xtend-${VERSION}-linux.AppImage
 
-      - name: Compute package version for .deb (strip leading 'v')
+      - name: Compute .deb version (strip leading “v”)
         run: echo "PKG_VERSION=${VERSION#v}" >> $GITHUB_ENV
 
       - name: Write Debian control file
@@ -97,9 +97,7 @@ jobs:
         run: |
           mkdir -p pkg/usr/{bin,share/applications,share/icons/hicolor/128x128/apps}
           cp -r dist/xtend/* pkg/usr/bin/
-          # reuse the same desktop entry
           cp dist/xtend.AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/
-          # use original icon (or normalized one)
           cp dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/128x128/apps/xtend.png
           dpkg-deb --build pkg xtend-${VERSION}-linux.deb
 
@@ -112,9 +110,9 @@ jobs:
         with:
           name: linux_release
           path: |
-            xtend-${VERSION}-linux.AppImage
-            xtend-${VERSION}-linux.deb
-            xtend-${VERSION}-linux.tar.gz
+            xtend-${{ env.VERSION }}-linux.AppImage
+            xtend-${{ env.VERSION }}-linux.deb
+            xtend-${{ env.VERSION }}-linux.tar.gz
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
   # build_windows:
