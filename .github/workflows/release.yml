@@ -33,10 +33,10 @@ jobs:
       - name: Install Python packages
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt    # all your runtime deps
-          pip install pyinstaller            # build tool
+          pip install -r requirements.txt    # all your runtime deps including PyQt5, FastAPI, etc.
+          pip install pyinstaller            # the build tool
 
-      - name: Build with PyInstaller (bundle static, templates, QtWebEngine)
+      - name: Build with PyInstaller (bundle PyQt5, static, templates, QtWebEngine)
         run: |
           pyinstaller --onedir --noupx \
             --name xtend --windowed \
@@ -45,6 +45,14 @@ jobs:
             --add-data "src/xtend/templates:xtend/templates" \
             --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
             --hidden-import PyQt5.QtWebEngineWidgets \
+            --collect-all PyQt5 \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all starlette \
+            --collect-all jinja2 \
+            --collect-all aiofiles \
+            --collect-all websockets \
+            --collect-all python_multipart \
             src/xtend/cli.py
 
       - name: Prepare AppDir and normalize icon
@@ -68,7 +76,7 @@ jobs:
             -units PixelsPerInch \
             dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
-      - name: Download linuxdeploy (core)
+      - name: Download linuxdeploy
         run: |
           wget -qO linuxdeploy-x86_64.AppImage \
             https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
