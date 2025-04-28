@@ -22,6 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y patchelf build-essential libfuse2
 
+      - name: Install Qt dependencies for linuxdeploy-plugin-qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qtbase5-dev qt5-qmake
+
       - name: Set up Python 3
         uses: actions/setup-python@v4
         with:
@@ -32,21 +37,20 @@ jobs:
           pip install --upgrade pip setuptools wheel
           pip install pyinstaller pyqt5
 
-      - name: Extract version number
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Extract version (strip leading “v”)
+        run: echo "VERSION=${VERSION#v}" >> $GITHUB_ENV
 
       - name: Build with PyInstaller (onedir, no UPX)
         run: |
           pyinstaller --onedir --noupx \
             --name xtend --windowed \
-            --icon src/xtend/resources/icon.ico \
+            --icon src/xtend/resources/icon.png \
             src/xtend/cli.py
 
       - name: Prepare AppDir for AppImage
         run: |
-          mkdir -p dist/xtend.AppDir/usr/{bin,share/{applications,icons/hicolor/256x256/apps}}
+          mkdir -p dist/xtend.AppDir/usr/{bin,share/applications,share/icons/hicolor/256x256/apps}
           cp -r dist/xtend/* dist/xtend.AppDir/usr/bin/
-          # desktop entry
           cat > dist/xtend.AppDir/usr/share/applications/xtend.desktop <<EOF
           [Desktop Entry]
           Type=Application
@@ -56,16 +60,16 @@ jobs:
           Terminal=false
           Categories=Utility;
           EOF
-          # icon
           cp src/xtend/resources/icon.png dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
 
       - name: Download linuxdeploy and Qt plugin
         run: |
           wget -qO linuxdeploy-x86_64.AppImage \
             https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
           wget -qO linuxdeploy-plugin-qt-x86_64.AppImage \
             https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-          chmod +x linuxdeploy-*.AppImage
+          chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
 
       - name: Create AppImage
         run: |
@@ -74,14 +78,14 @@ jobs:
             -d dist/xtend.AppDir/usr/share/applications/xtend.desktop \
             -i src/xtend/resources/icon.png \
             --output appimage
-          mv Xtend*.AppImage xtend-${VERSION#v}-linux.AppImage
+          mv Xtend*.AppImage xtend-${VERSION}-linux.AppImage
 
       - name: Write Debian control file
         run: |
           mkdir -p pkg/DEBIAN
           cat > pkg/DEBIAN/control <<EOF
           Package: xtend
-          Version: ${VERSION#v}
+          Version: ${VERSION}
           Section: utils
           Priority: optional
           Architecture: amd64
@@ -94,22 +98,21 @@ jobs:
         run: |
           mkdir -p pkg/usr/{bin,share/applications,share/icons/hicolor/128x128/apps}
           cp -r dist/xtend/* pkg/usr/bin/
-          # copy desktop file & icon (reuse the one in your repo or AppDir)
           cp src/xtend/resources/xtend.desktop pkg/usr/share/applications/
           cp src/xtend/resources/icon.png pkg/usr/share/icons/hicolor/128x128/apps/xtend.png
-          dpkg-deb --build pkg xtend-${VERSION#v}-linux.deb
+          dpkg-deb --build pkg xtend-${VERSION}-linux.deb
 
       - name: Create tar.gz of onedir bundle
-        run: tar czvf xtend-${VERSION#v}-linux.tar.gz -C dist xtend
+        run: tar czvf xtend-${VERSION}-linux.tar.gz -C dist xtend
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux_release
           path: |
-            xtend-${VERSION#v}-linux.AppImage
-            xtend-${VERSION#v}-linux.deb
-            xtend-${VERSION#v}-linux.tar.gz
+            xtend-${VERSION}-linux.AppImage
+            xtend-${VERSION}-linux.deb
+            xtend-${VERSION}-linux.tar.gz
 
   # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
   # build_windows:
