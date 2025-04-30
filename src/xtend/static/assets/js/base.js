@@ -5,7 +5,6 @@ window.addEventListener("load", () => {
     preloader.style.opacity = 0;
     setTimeout(() => {
         preloader.style.display = "none";
-        mainContent.classList.remove("opacity-0");
     }, 300);
 });
 
