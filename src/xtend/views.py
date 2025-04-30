@@ -1,6 +1,5 @@
 """Flask routes for handling application selection, streaming, and session management."""
 import queue
-import uuid
 import time
 import asyncio
 import cv2
@@ -49,20 +48,28 @@ async def get_applications():
         logger.error("Error fetching applications: %s", err, exc_info=True)
         return JSONResponse({"error": "Error fetching applications"}, status_code=500)
 
-@app.get("/sessions", response_class=HTMLResponse)
-async def sessions(request: Request):
+@app.get("/get-sessions",)
+async def get_sessions():
     """Render the sessions page with available applications and active sessions."""
     try:
-        logger.info("Rendered index page with current applications.")
+        return {"active_sessions": app_sessions}
+    except Exception as err:
+        logger.error("Error getting active sessions: %s", err, exc_info=True)
+        return JSONResponse({"error": "Error getting active sessions"}, status_code=500)
+
+@app.get("/sessions", response_class=HTMLResponse)
+async def sessions(request: Request):
+    "Render active sessions component"
+    try:
         server_ip = get_local_ip()
-        return templates.TemplateResponse("index.html", {
-            "request": request,  
+        return templates.TemplateResponse("sessions.html", {
+            "request": request,
             "active_sessions": app_sessions,
             "server_ip": server_ip,
-            "server_port": settings.PORT,
+            "server_port": settings.PORT
         })
     except Exception as err:
-        logger.error("Error rendering index page: %s", err, exc_info=True)
+        logger.error("Error rendering sessions page: %s", err, exc_info=True)
         return JSONResponse({"error": "Error loading the page"}, status_code=500)
 
 # Handle the selection of an application for screen capture
@@ -72,7 +79,7 @@ async def handle_selection(application: str = Form(...)):
     if not application:
         raise HTTPException(status_code=400, detail="Application is required")
 
-    session_id = str(uuid.uuid4())
+    session_id = str(generate_session_id(app_sessions))
 
     try:
         logger.info("Starting capture for %s with session ID %s", application, session_id)

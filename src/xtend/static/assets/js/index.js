@@ -1,3 +1,7 @@
+document.addEventListener("DOMContentLoaded", () => {
+    loadActiveSessions();
+});
+
 // Modal interactions
 document.getElementById("select-close-popup").addEventListener("click", () => {
     document.getElementById('select-app-popup').classList.add("hidden");
@@ -10,7 +14,7 @@ document.getElementById("select-app").addEventListener("click", () => {
 // Application selection
 document.getElementById("select-app").addEventListener("click", () => {
     const popup = document.getElementById("select-app-popup");
-    const loading = document.getElementById("loading-indicator");
+    const loading = document.getElementById("loading-apps");
     const grid = popup.querySelector(".grid");
 
     // Clear previous results
@@ -48,21 +52,16 @@ document.getElementById("select-app").addEventListener("click", () => {
             document.querySelectorAll(".select-app").forEach(el => {
                 el.addEventListener("click", function () {
                     preLoader();
-                    const preloader = document.getElementById("preloader");
-                    const mainContent = document.getElementById("main-content");
-
-                    preloader.style.opacity = 0;
-                    // setTimeout(() => {
-                    //     preloader.style.display = "none";
-                    //     mainContent.classList.remove("opacity-0");
-                    // }, 300);
                     const appName = this.dataset.app;
+                    popup.classList.add("hidden");
                     fetch("/select-app", {
                         method: "POST",
                         headers: { "Content-Type": "application/x-www-form-urlencoded" },
                         body: new URLSearchParams({ application: appName })
                     }).then(response => {
-                        if (response.ok) window.location.reload();
+                        if (response.ok) {
+                            loadActiveSessions();
+                        }
                         else console.error("Failed to start session");
                     }).catch(console.error);
                 });
@@ -82,7 +81,7 @@ document.querySelectorAll("#select-screen").forEach(el => {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         }).then(response => {
-            if (response.ok) window.location.reload();
+            if (response.ok) loadActiveSessions();
             else console.error("Failed to start session");
         }).catch(console.error);
     });
@@ -124,7 +123,41 @@ function copyToClipboard(text) {
 }
 
 function preLoader() {
-    const preloader = document.getElementById("preloader");
-    preloader.style.display = "flex";
-    preloader.style.opacity = 1;
+    const loader = document.getElementById("loading-sessions");
+    loader.classList.remove("hidden");
+}
+
+function loadActiveSessions() {
+    const container = document.getElementById("active-sessions");
+    const loader = document.getElementById("loading-sessions");
+
+    loader.classList.remove("hidden");
+    container.innerHTML = '';
+
+    fetch("/sessions")
+        .then(response => response.text())
+        .then(html => {
+            loader.classList.add("hidden");
+            container.innerHTML = html;
+        })
+        .catch(err => {
+            loader.classList.add("hidden");
+            container.innerHTML = `<p class="text-red-500">Failed to load sessions.</p>`;
+            console.error(err);
+        });
+}
+
+function closeSession(sessionId) {
+    preLoader();
+    fetch("/close-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ session_id: sessionId })
+    }).then(res => {
+        if (res.ok) {
+            loadActiveSessions();
+        } else {
+            console.error("Failed to close session");
+        }
+    }).catch(console.error);
 }
