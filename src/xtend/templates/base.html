@@ -6,92 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Xtend Streaming Platform{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Base Styles */
-        .animated-bg {
-            position: fixed;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            z-index: 0;
-        }
-
-        .animated-bg span {
-            position: absolute;
-            width: 40vmin;
-            height: 40vmin;
-            background: rgba(59, 130, 246, 0.05);
-            border-radius: 50%;
-            animation: float 25s infinite linear;
-        }
-
-        @keyframes float {
-            0% {
-                transform: translate(0, 0) scale(1);
-                opacity: 0.1;
-            }
-
-            50% {
-                transform: translate(100vw, 50vh) scale(1.5);
-                opacity: 0.05;
-            }
-
-            100% {
-                transform: translate(0, 100vh) scale(0.8);
-                opacity: 0.1;
-            }
-        }
-
-        .gradient-bg {
-            background: linear-gradient(-45deg, #1a202c, #2d3748, #4a5568);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
-        }
-
-        @keyframes gradient {
-            0% {
-                background-position: 0% 50%;
-            }
-
-            50% {
-                background-position: 100% 50%;
-            }
-
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-
-        .hover-scale {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .hover-scale:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-        }
-
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #1a202c;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #2d3748;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #4a5568;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='assets/css/style.css') }}">
     {% block extra_styles %}{% endblock %}
 </head>
 
-<body class="gradient-bg text-white min-h-screen relative overflow-hidden">
+<body class="gradient-bg text-white min-h-screen flex flex-col">
+    <!-- Preloader Wrapper -->
+    <div id="preloader"
+        class="fixed inset-0 flex items-center justify-center bg-white z-50 transition-opacity duration-300">
+        <!-- Spinner -->
+        <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
+    </div>
+
     <!-- Animated Background -->
     <div class="animated-bg">
         <span style="left: 10%; animation-delay: 0s"></span>
@@ -126,26 +52,55 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
+    <main class="flex-grow pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Scripts -->
-    <script>
-        // Base Interactions
-        document.querySelectorAll('a, button').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                // Ripple Effect
-                const rect = this.getBoundingClientRect();
-                const ripple = document.createElement('div');
-                ripple.style.left = (e.clientX - rect.left) + 'px';
-                ripple.style.top = (e.clientY - rect.top) + 'px';
-                ripple.classList.add('ripple-effect');
-                this.appendChild(ripple);
-                setTimeout(() => ripple.remove(), 500);
-            });
-        });
-    </script>
+    <footer class="bg-gray-900 text-gray-400 py-10 z-10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
+
+                <!-- Left Column: Project Info -->
+                <div class="space-y-3">
+                    <h2 class="text-white text-lg font-semibold">Xtend</h2>
+                    <p>
+                        Extend any device with a browser into a secondary screen.<br>
+                        Stream any desktop app in real-time over your local network.
+                    </p>
+                </div>
+
+                <!-- Right Column: GitHub & Links -->
+                <div class="space-y-4 md:text-right">
+                    <div class="space-x-4">
+                        <a target="_blank" href="https://github.com/itsmepvr/Xtend"
+                            class="hover:text-white transition">GitHub</a>
+                        <a target="_blank" href="https://github.com/itsmepvr/Xtend/issues"
+                            class="hover:text-white transition">Issues</a>
+                        <a target="_blank" href="https://github.com/itsmepvr/Xtend/graphs/contributors"
+                            class="hover:text-white transition">Contributors</a>
+                        <a target="_blank" href="https://itsmepvr.is-a.dev"
+                            class="hover:text-white transition">xtend.dev</a>
+                    </div>
+                    <div>
+                        <a target="_blank" href="https://github.com/itsmepvr/xtend" target="_blank"
+                            class="inline-flex items-center px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded hover:bg-gray-100 transition">
+                            ⭐ Star on GitHub
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Line -->
+            <div class="mt-10 border-t border-gray-700 pt-6 text-center text-sm text-gray-500">
+                © 2025 Xtend. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+
+
+    <script src="{{ url_for('static', path='assets/js/base.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 

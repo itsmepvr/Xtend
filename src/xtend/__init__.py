@@ -27,5 +27,6 @@ def run_fastapi():
     uvicorn.run(
         "xtend.app:app",
         host=settings.HOST,
-        port=settings.PORT
+        port=settings.PORT,
+        
     )
