@@ -15,3 +15,8 @@ Cross-Platform Support: Built on Python and X11 (Linux), PyObjC (macOS), and PyS
 This release establishes the foundation for future enhancements—improved performance, expanded platform coverage, and automated update delivery.
 
 We welcome your feedback and contributions—please open issues or pull requests, and join us as we build the next generation of seamless, cross-device screen sharing.
+
+
+sudo apt install llvm-dev libclang-dev clang pkg-config libopencv-dev
+
+sudo apt install libopencv-dev
