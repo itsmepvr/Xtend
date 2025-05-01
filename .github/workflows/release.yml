@@ -39,9 +39,21 @@ jobs:
           pip install pyinstaller
 
       - name: Set up Rust
-        uses: actions/setup-rust@v1
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
+          toolchain: stable
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Build Rust shared library
         run: |
