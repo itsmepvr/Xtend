@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "app_capturer",
+    "app_test"
+]
+resolver = "2"

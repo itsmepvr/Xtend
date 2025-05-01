@@ -1,0 +1,15 @@
+[package]
+name = "app_capturer"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "app_capturer"
+crate-type = ["rlib", "cdylib"]  # ✅ BOTH native Rust + FFI
+
+[dependencies]
+libc = "0.2"
+x11 = "2.21.0"
+once_cell = "1.19"
+opencv = { version = "0.94", features = ["imgproc"] }

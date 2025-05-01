@@ -7,7 +7,7 @@ from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from xtend.app import app, app_sessions, logger, templates
 from xtend.utils import get_open_applications, get_local_ip, generate_session_id
-from xtend.capture import AppCapturer
+from xtend.rust_capturer import RustCapturer
 from xtend.config import settings
 
 @app.get("/", response_class=HTMLResponse)
@@ -83,7 +83,7 @@ async def handle_selection(application: str = Form(...)):
 
     try:
         logger.info("Starting capture for %s with session ID %s", application, session_id)
-        capturer = AppCapturer(application)
+        capturer = RustCapturer(application, capture_mode='app')
         capturer.start_capture()
 
         app_sessions[session_id] = {
@@ -105,7 +105,7 @@ async def handle_fullscreen_selection():
     session_id = str(generate_session_id(app_sessions))
     try:
         logger.info("Starting full screen capture with session ID %s", session_id)
-        capturer = AppCapturer(capture_mode='full_screen')
+        capturer = RustCapturer(capture_mode='full_screen')
         capturer.start_capture()
 
         app_sessions[session_id] = {
