@@ -15,6 +15,9 @@ jobs:
       VERSION: ${{ github.ref_name }}
 
     steps:
+      - name: Confirm Rust .so file exists
+        run: ls -lh app_capturer/target/release/libapp_lib.so
+
       - name: Check out code
         uses: actions/checkout@v3
 
