@@ -61,6 +61,11 @@ jobs:
       #     cargo build --release -p app_lib
       #     cd ..
 
+      - name: Copy .so into Python package
+        run: |
+          cp app_capturer/target/release/libapp_lib.so src/xtend/libapp_lib.so
+          ls -lh src/xtend/libapp_lib.so
+
       - name: Build with PyInstaller (bundle all deps)
         run: |
           LIB_SO_PATH="$(pwd)/app_capturer/target/release/libapp_lib.so"
@@ -69,7 +74,7 @@ jobs:
             --icon src/xtend/resources/icon.png \
             --add-data "src/xtend/static:xtend/static" \
             --add-data "src/xtend/templates:xtend/templates" \
-            --add-binary "$LIB_SO_PATH:." \
+            --add-binary "src/xtend/libapp_lib.so:." \
             --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
             --hidden-import PyQt5.QtWebEngineWidgets \
             --collect-all PyQt5 \
