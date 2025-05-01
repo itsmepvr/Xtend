@@ -1,27 +1,28 @@
 # Xtend
 
-Extend any device with a web browser into a secondary screen for your computer. Xtend Screen captures the display of selected desktop applications in real time and streams them via a FastAPI server.
+Xtend Screen turns any web-enabled device into a secondary screen for your computer by capturing desktop applications and streaming them in real time via a FastAPI-powered backend with Rust-based performance enhancements.
 
 ## Features
 
-- **Screen Sharing:** Capture and stream any open application window on your desktop.
+- **Real-Time Screen Sharing:** Capture and stream any desktop application window.
 
-- **Device Flexibility:** Use smartphones, tablets, or any web‑enabled device as a secondary display.
+- **Device Flexibility:** Access shared screens from smartphones, tablets, or any browser-enabled device.
 
-- **Real-Time Performance:** Low‑latency streaming powered by FastAPI and Uvicorn.
+- **Rust-Powered Capture:** High-performance screen capture via Rust FFI using X11 and OpenCV.
 
-- **Dynamic URL Generation:** Each shared application receives a unique URL for easy access.
+- **FastAPI Integration:** Ultra-fast API serving and web interface via FastAPI + Uvicorn.
 
-- **Cross‑Platform Ready:** Works on Linux (X11/Composite), macOS (via pyobjc), and Windows (future support).
+- **Dynamic URL Sharing:** Unique URLs generated for each shared application.
+
+- **Cross-Platform:** Portable and installable on Linux, macOS, and Windows.
 
 ## Requirements
 
 - Python 3.x
 - FastAPI
 - Uvicorn (ASGI server for FastAPI)
-- Xlib
-- Python-Xlib
-- Composite extension for X11
+- Rust + Cargo
+- Xlib, Composite (Linux)
 - `pyobjc` (on macOS) or equivalent packages for other platforms
 
 ## Installation
@@ -32,67 +33,41 @@ Before installing Python dependencies, ensure your system has the native X11 Com
 
 - **Linux (X11/Composite):**
   ```
-  sudo apt-get update
-  sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+   sudo apt-get update
+   sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+   sudo apt install llvm-dev libclang-dev clang pkg-config libopencv-dev
+   sudo apt install libopencv-dev
   ```
 - macOS (for screen capture support via PyObjC):
   ```
-  brew update
-  brew install imagemagick  # install any additional native libs if needed
+   brew update
+   brew install imagemagick  # install any additional native libs if needed
   ```
 
 You can install and run Xtend Screen via pip + setuptools or Poetry. Choose the workflow that suits you.
 
 #### A. Using Poetry (recommended)
 
-1. Clone the repository:
-
-   ```
-   git clone https://github.com/itsmepvr/Xtend.git
-   cd Xtend
-   ```
-
-2. Install Poetry (if not already):
-   ```
-   pip install poetry
-   ```
-3. Install dependencies & create venv:
-   ```
-   poetry install
-   ```
-4. Activate the Poetry shell:
-   ```
-   poetry shell
-   ```
-5. Run the application (Qt GUI + FastAPI server):
-   ```
-   xtend
-   ```
+```
+git clone https://github.com/itsmepvr/Xtend.git
+cd Xtend
+pip install poetry
+poetry install
+poetry shell
+xtend  # launches Qt + FastAPI
+```
 
 #### B. Using pip + setuptools
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/itsmepvr/Xtend.git
-   cd Xtend
-   ```
-2. Create and activate a virtual environment:
-   ```
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-4. Install the package:
-   ```
-   pip install -e .
-   ```
-5. Run the application (Qt GUI + FastAPI server):
-   ```
-   xtend
-   ```
+```
+git clone https://github.com/itsmepvr/Xtend.git
+cd Xtend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+xtend
+```
 
 To run only the Web API server:
 
@@ -113,9 +88,6 @@ xtend --mode web
    PORT=4563
    SECRET_KEY=your-secret-key
    ```
-3. Add .env to .gitignore:
-   `   .env`
-   Xtend loads settings via Pydantic’s BaseSettings, reading `.env` automatically.
 
 ## Usage
 
@@ -139,58 +111,34 @@ uvicorn xtend.server:app --host 0.0.0.0 --port 9999 --reload
 
 Open your browser at http://127.0.0.1:9999 to view available applications.
 
-## Packaging Executables
-
-#### Build scripts
-
-A sample build script is available at `scripts/build_exe.sh`:
+## Building Rust FFI (Required)
 
 ```
-#!/usr/bin/env bash
-pyinstaller --onefile --name xtend-qt src/xtend/cli.py --windowed
-pyinstaller --onefile --name xtend-web src/xtend/cli.py --add-data "src/xtend/static:static" --add-data "src/xtend/templates:templates"
+cd app_capturer
+cargo build --release -p app_lib
 ```
 
-Run:
-
-```
-bash scripts/build_exe.sh
-```
-
-Binaries will be in `dist/` for distribution.
-
-## Test Cases
-
-Test cases are in the `tests` folder. Run test cases using the following command:
-
-```bash
-PYTHONPATH=$(pwd) pytest
-```
-
-## How It Works
-
-1. **Home Page**: The home page lists all the open applications on the desktop.
-2. **URL Generation**: Upon selecting an application, a unique URL is generated with a query parameter (e.g., `?app_id=12345`).
-3. **Screen Capture**: The FastAPI app uses Xlib, Composite, and Display libraries to capture the screen of the selected application.
-4. **Web Streaming**: The captured screen is then streamed to the web browser in real-time.
+This generates the shared library `(libapp_capturer.so / .dll / .dylib)` used by the Python layer.
 
 ## Contributing
 
-We welcome contributions! Please follow these steps:
+We welcome contributions! Please follow the branching convention:
 
-1. Fork the repository.
+- `feature/your-feature-name`
 
-2. Create a new branch: git checkout -b feature/my-new-feature.
+- `bug-fix/your-bug-description`
 
-3. Install dependencies and run tests.
+- `other/chore-or-doc-task`
 
-4. Make your changes and commit: git commit -m "Add awesome feature".
+## How It Works
 
-5. Push to your fork: git push origin feature/my-new-feature.
+- Home page lists open windows.
 
-6. Open a Pull Request and describe your changes.
+- App selection generates a unique stream URL.
 
-7. Please adhere to the existing code style and keep feature branches focused.
+- Screen is captured via Rust/X11/OpenCV.
+
+- Frames are streamed to the browser in real-time.
 
 ## License
 
