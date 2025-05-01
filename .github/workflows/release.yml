@@ -1,18 +1,19 @@
 name: Release
 permissions:
-  contents: write # allow creating releases
+  contents: write
+
 on:
   push:
     tags:
-      - "v*" # triggers on new tag like v1.0.0
+      - "v*"
 
 jobs:
-  # **Linux Build Job** – builds AppImage, .deb, and tar.gz on Ubuntu 18.04
   build_linux:
     name: Build Linux executables
     runs-on: ubuntu-22.04
     env:
-      VERSION: ${{ github.ref_name }} # e.g. "v0.0.1"
+      VERSION: ${{ github.ref_name }}
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -23,18 +24,30 @@ jobs:
           sudo apt-get install -y \
             patchelf build-essential libfuse2 imagemagick \
             wmctrl x11-utils libxcomposite1 libxrender1 libgl1-mesa-glx libdrm2 \
-            qtbase5-dev qt5-qmake qtwebengine5-dev
+            qtbase5-dev qt5-qmake qtwebengine5-dev \
+            llvm-dev libclang-dev clang pkg-config libopencv-dev
 
-      - name: Set up Python 3
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
 
-      - name: Install Python packages
+      - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt    # all your runtime deps
-          pip install pyinstaller            # build tool
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+
+      - name: Build Rust shared library
+        run: |
+          cd app_capturer
+          cargo build --release -p app_lib
+          cd ..
 
       - name: Build with PyInstaller (bundle all deps)
         run: |
@@ -43,6 +56,7 @@ jobs:
             --icon src/xtend/resources/icon.png \
             --add-data "src/xtend/static:xtend/static" \
             --add-data "src/xtend/templates:xtend/templates" \
+            --add-binary "app_capturer/target/release/libapp_capturer.so:." \
             --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
             --hidden-import PyQt5.QtWebEngineWidgets \
             --collect-all PyQt5 \
@@ -55,13 +69,10 @@ jobs:
             --collect-all python_multipart \
             src/xtend/cli.py
 
-      - name: Prepare AppDir, normalize icon & create AppRun
+      - name: Prepare AppDir and AppRun
         run: |
-          # 1) AppDir layout
           mkdir -p dist/xtend.AppDir/usr/{bin,share/applications,share/icons/hicolor/256x256/apps}
           cp -r dist/xtend/* dist/xtend.AppDir/usr/bin/
-
-          # 2) .desktop
           cat > dist/xtend.AppDir/usr/share/applications/xtend.desktop <<EOF
           [Desktop Entry]
           Type=Application
@@ -71,16 +82,9 @@ jobs:
           Terminal=false
           Categories=Utility;
           EOF
-
-          # 3) icon
-          convert src/xtend/resources/icon.png \
-            -resize 256x256 -density 96 -units PixelsPerInch \
-            dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
-
-          # 4) AppRun wrapper to force software rendering
+          convert src/xtend/resources/icon.png -resize 256x256 dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png
           cat > dist/xtend.AppDir/AppRun <<'EOF'
           #!/bin/sh
-          # Force Qt WebEngine to use software-only GL and disable GPU
           export QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu --disable-software-rasterizer"
           export QT_OPENGL="software"
           exec "$APPDIR/usr/bin/xtend" "$@"
@@ -89,8 +93,7 @@ jobs:
 
       - name: Download linuxdeploy
         run: |
-          wget -qO linuxdeploy-x86_64.AppImage \
-            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -qO linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage
 
       - name: Create AppImage
@@ -102,10 +105,10 @@ jobs:
             --output appimage
           mv Xtend*.AppImage xtend-${VERSION}-linux.AppImage
 
-      - name: Compute .deb version (strip leading “v”)
+      - name: Compute .deb version
         run: echo "PKG_VERSION=${VERSION#v}" >> $GITHUB_ENV
 
-      - name: Write Debian control file
+      - name: Build .deb package
         run: |
           mkdir -p pkg/DEBIAN
           cat > pkg/DEBIAN/control <<EOF
@@ -116,22 +119,19 @@ jobs:
           Architecture: amd64
           Depends: python3, libxcb-xinerama0, libnss3, libgdk-pixbuf-2.0-0, libglu1-mesa, libpulse0, libegl1, libxi6, libxcomposite1, libxrandr2, libxtst6, libatk1.0-0, libpangocairo-1.0-0, libcairo2, libpango1.0-0, libgtk-3-0, libglib2.0-0, libgl1
           Maintainer: Your Name <you@example.com>
-          Description: Xtend — a self-contained PyQt5 + FastAPI desktop app
+          Description: Xtend — a self-contained PyQt5 + FastAPI desktop app with Rust-powered screen capture
           EOF
 
-      - name: Build Debian package
-        run: |
           mkdir -p pkg/usr/{bin,share/applications,share/icons/hicolor/128x128/apps}
           cp -r dist/xtend/* pkg/usr/bin/
           cp dist/xtend.AppDir/usr/share/applications/xtend.desktop pkg/usr/share/applications/
           cp dist/xtend.AppDir/usr/share/icons/hicolor/256x256/apps/xtend.png pkg/usr/share/icons/hicolor/128x128/apps/xtend.png
           dpkg-deb --build pkg xtend-${VERSION}-linux.deb
 
-      - name: Create tar.gz of onedir bundle
-        run: |
-          tar czvf xtend-${VERSION}-linux.tar.gz -C dist xtend
+      - name: Create tar.gz bundle
+        run: tar czvf xtend-${VERSION}-linux.tar.gz -C dist xtend
 
-      - name: Upload Linux artifacts
+      - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux_release
@@ -140,128 +140,18 @@ jobs:
             xtend-${{ env.VERSION }}-linux.deb
             xtend-${{ env.VERSION }}-linux.tar.gz
 
-  # **Windows Build Job** – builds one-file exe and NSIS installer on Windows
-  # build_windows:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v3
-
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.x"
-
-  #     - name: Install Windows build dependencies
-  #       shell: powershell
-  #       run: |
-  #         choco install -y nsis upx
-  #         python -m pip install --upgrade pip
-  #         pip install pyinstaller PyQt5
-
-  #     - name: Extract version
-  #       shell: bash
-  #       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-
-  #     - name: Build Windows executable with PyInstaller
-  #       shell: cmd
-  #       run: pyinstaller --onefile --windowed --name xtend --icon src\xtend\resources\icon.ico src\xtend\cli.py
-
-  #     - name: Compress executable with UPX
-  #       shell: cmd
-  #       run: upx --force -9 dist\xtend.exe || echo "UPX compression failed, continuing without it"
-
-  #     - name: Generate NSIS Installer
-  #       shell: cmd
-  #       run: |
-  #         makensis /DVERSION=%VERSION% windows\xtend.nsi
-
-  #     - name: Move & rename portable EXE to workspace root
-  #       shell: cmd
-  #       run: move /Y dist\xtend.exe xtend-%VERSION%-windows.exe
-
-  #     - name: Upload Windows artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: windows_artifacts
-  #         path: |
-  #           xtend-${{ env.VERSION }}-windows.exe
-  #           xtend-${{ env.VERSION }}-windows-installer.exe
-
-  # **macOS Build Job** – builds .app bundle and .dmg on macOS 12 (Monterey)
-  # build_macos:
-  #   runs-on: macos-latest
-
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v3
-
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.x"
-
-  #     - name: Install macOS build dependencies
-  #       run: brew install upx
-
-  #     - name: Install Python requirements
-  #       run: |
-  #         pip install --upgrade pip
-  #         pip install pyinstaller PyQt5 pillow   # ← added pillow
-
-  #     - name: Extract version
-  #       shell: bash
-  #       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-
-  #     - name: Build macOS app with PyInstaller
-  #       run: |
-  #         pyinstaller --onefile --windowed --name Xtend \
-  #           --icon src/xtend/resources/icon.png \
-  #           src/xtend/cli.py
-
-  #     - name: Compress macOS binary with UPX
-  #       run: |
-  #         upx --force -9 dist/Xtend.app/Contents/MacOS/Xtend \
-  #           || echo "UPX compression failed, continuing without it"
-
-  #     - name: Package macOS artifacts (.app and .dmg)
-  #       run: |
-  #         hdiutil create -volname "Xtend" \
-  #           -srcfolder "dist/Xtend.app" \
-  #           -ov -format UDZO "xtend-${VERSION}-macos.dmg"
-  #         ditto -c -k --sequesterRsrc --keepParent \
-  #           "dist/Xtend.app" "xtend-${VERSION}-macos.app.zip"
-
-  #     - name: Upload macOS artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: macos_artifacts
-  #         path: |
-  #           xtend-${{ env.VERSION }}-macos.dmg
-  #           xtend-${{ env.VERSION }}-macos.app.zip
-
-  # **Release Job** – creates a draft GitHub Release and attaches all artifacts
   create_release:
     runs-on: ubuntu-latest
     needs: [build_linux]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
           name: linux_release
-          path: . # unpack directly into workspace root
-
-      # - name: Download Windows artifacts
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: windows_artifacts
-
-      # - name: Download macOS artifacts
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: macos_artifacts
+          path: .
 
       - name: Create Draft Release
         id: release
@@ -273,7 +163,7 @@ jobs:
           draft: true
           prerelease: false
 
-      - name: Upload Linux AppImage
+      - name: Upload AppImage
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.release.outputs.upload_url }}
@@ -281,7 +171,7 @@ jobs:
           asset_name: xtend-${{ github.ref_name }}-linux.AppImage
           asset_content_type: application/octet-stream
 
-      - name: Upload Linux Debian package
+      - name: Upload .deb
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.release.outputs.upload_url }}
@@ -289,42 +179,10 @@ jobs:
           asset_name: xtend-${{ github.ref_name }}-linux.deb
           asset_content_type: application/vnd.debian.binary-package
 
-      - name: Upload Linux tar.gz archive
+      - name: Upload tar.gz
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.release.outputs.upload_url }}
           asset_path: xtend-${{ github.ref_name }}-linux.tar.gz
           asset_name: xtend-${{ github.ref_name }}-linux.tar.gz
           asset_content_type: application/tar+gzip
-
-      # - name: Upload Windows portable EXE
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-windows.exe
-      #     asset_name: xtend-${{ env.VERSION }}-windows.exe
-      #     asset_content_type: application/octet-stream
-
-      # - name: Upload Windows installer EXE
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-windows-installer.exe
-      #     asset_name: xtend-${{ env.VERSION }}-windows-installer.exe
-      #     asset_content_type: application/octet-stream
-
-      # - name: Upload macOS .dmg installer
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-macos.dmg
-      #     asset_name: xtend-${{ env.VERSION }}-macos.dmg
-      #     asset_content_type: application/x-apple-diskimage
-
-      # - name: Upload macOS .app bundle (zipped)
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.release.outputs.upload_url }}
-      #     asset_path: xtend-${{ env.VERSION }}-macos.app.zip
-      #     asset_name: xtend-${{ env.VERSION }}-macos.app.zip
-      #     asset_content_type: application/zip
