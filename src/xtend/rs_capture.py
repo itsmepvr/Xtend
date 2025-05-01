@@ -3,8 +3,10 @@ import numpy as np
 import threading
 import queue
 import time
+import os
 
-lib = ctypes.CDLL("./app_capturer/target/release/libapp_capturer.so")
+lib_path = os.path.abspath("app_capturer/target/release/libapp_lib.so")
+lib = ctypes.CDLL(lib_path)
 
 # FFI setup
 lib.start_capture.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
