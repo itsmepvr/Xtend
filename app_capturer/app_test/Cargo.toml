@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-app_capturer = { path = "../app_capturer" }
+app_lib = { path = "../app_lib" }

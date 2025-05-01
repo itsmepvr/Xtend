@@ -2,7 +2,7 @@ use std::ffi::CString;
 use std::thread;
 use std::time::Duration;
 
-use app_capturer::api::{start_capture, get_frame, stop_capture};
+use app_lib::api::{start_capture, get_frame, stop_capture};
 
 fn main() {
     let app = CString::new("Google Chrome").unwrap();

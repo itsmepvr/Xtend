@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "app_capturer",
+    "app_lib",
     "app_test"
 ]
 resolver = "2"

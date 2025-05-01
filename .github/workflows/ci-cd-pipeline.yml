@@ -1,73 +1,59 @@
 name: CI/CD Pipeline
 
-# Trigger workflow on push to main/master or on any PR
 on:
   push:
     branches:
       - main
       - master
   pull_request:
-    branches:
-      - "*"
 
 jobs:
-  lint_and_test:
+  test_xtend_runtime:
+    name: Basic App Run Check
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: Install System Dependencies
+      - name: Build Rust lib
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
+          cd app_capturer
+          cargo build --release -p app_lib
 
-      # - name: Run Tests
-      #   run: |
-      #     pytest
-
-  deploy:
-    needs: lint_and_test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dependencies
+      - name: Check FastAPI App Runs
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wmctrl x11-utils libxcomposite-dev libxrender-dev
-
-      - name: Build App
-        run: |
-          echo "Building the app..."
-          # e.g. pyinstaller scripts/build_exe.sh
-
-      - name: Deploy FastAPI app with Uvicorn
-        run: |
-          nohup uvicorn xtend.server:app \
-            --host 0.0.0.0 \
+          nohup uvicorn src.xtend.server:app \
+            --host 127.0.0.1 \
             --port 8000 \
-            --workers 4 \
+            --workers 1 \
             &>/dev/null &
+          sleep 5
+          curl --fail http://127.0.0.1:8000 || (echo "❌ App did not start" && exit 1)
+          echo "✅ FastAPI is running."
+
+      - name: [SKIPPED] Run Tests
+        if: ${{ false }}
+        run: |
+          echo "Pytest would run here"
+          # pytest
+
+      - name: [SKIPPED] Deploy Step
+        if: ${{ false }}
+        run: |
+          echo "Deployment would happen here"

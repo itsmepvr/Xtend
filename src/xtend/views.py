@@ -7,7 +7,7 @@ from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from xtend.app import app, app_sessions, logger, templates
 from xtend.utils import get_open_applications, get_local_ip, generate_session_id
-from xtend.rust_capturer import RustCapturer
+from xtend.rs_capture import RustCapturer
 from xtend.config import settings
 
 @app.get("/", response_class=HTMLResponse)
