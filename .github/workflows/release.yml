@@ -68,7 +68,7 @@ jobs:
             --icon src/xtend/resources/icon.png \
             --add-data "src/xtend/static:xtend/static" \
             --add-data "src/xtend/templates:xtend/templates" \
-            --add-binary "$(pwd)/app_capturer/target/release/libapp_lib.so:."
+            --add-binary "$(pwd)/app_capturer/target/release/libapp_lib.so:." \
             --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
             --hidden-import PyQt5.QtWebEngineWidgets \
             --collect-all PyQt5 \
