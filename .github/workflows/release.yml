@@ -15,9 +15,6 @@ jobs:
       VERSION: ${{ github.ref_name }}
 
     steps:
-      - name: Confirm Rust .so file exists
-        run: ls -lh app_capturer/target/release/libapp_lib.so
-
       - name: Check out code
         uses: actions/checkout@v3
 
@@ -64,20 +61,14 @@ jobs:
       #     cargo build --release -p app_lib
       #     cd ..
 
-      - name: Copy .so into Python package
-        run: |
-          cp app_capturer/target/release/libapp_lib.so src/xtend/libapp_lib.so
-          ls -lh src/xtend/libapp_lib.so
-
       - name: Build with PyInstaller (bundle all deps)
         run: |
-          LIB_SO_PATH="$(pwd)/app_capturer/target/release/libapp_lib.so"
           pyinstaller --onedir --noupx \
             --name xtend --windowed \
             --icon src/xtend/resources/icon.png \
             --add-data "src/xtend/static:xtend/static" \
             --add-data "src/xtend/templates:xtend/templates" \
-            --add-binary "src/xtend/libapp_lib.so:." \
+            --add-binary "src/xtend/libapp_lib.so:."
             --add-binary "/usr/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess:." \
             --hidden-import PyQt5.QtWebEngineWidgets \
             --collect-all PyQt5 \
