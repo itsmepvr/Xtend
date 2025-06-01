@@ -4,16 +4,8 @@ import threading
 import queue
 import time
 import os
-import sys
 
-if getattr(sys, 'frozen', False):
-    # Running from PyInstaller
-    base_path = sys._MEIPASS
-else:
-    # Running from source
-    base_path = os.path.dirname(__file__)
-
-lib_path = os.path.join(base_path, "libapp_lib.so")
+lib_path = os.path.abspath("app_capturer/target/release/libapp_lib.so")
 lib = ctypes.CDLL(lib_path)
 
 # FFI setup
