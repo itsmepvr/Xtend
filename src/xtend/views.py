@@ -166,8 +166,8 @@ async def stream_page(request: Request, session_id: str):
     if session_id not in app_sessions:
         logger.error("Invalid session ID: %s requested for streaming.", session_id)
         return templates.TemplateResponse(
+            "session_expired.html",
             {"request": request, "session_id": session_id},
-            "session_expired.html"
         )
 
     logger.info("Starting video feed for session ID: %s", session_id)
