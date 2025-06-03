@@ -48,7 +48,15 @@ Xtend is a cross-platform screen sharing tool that turns any browser-enabled dev
 
 ## ⚙️ Technology Stack
 
-LayerTechCapture CoreRust + X11 + OpenCVWeb BackendPython 3.11 + FastAPIWeb ServerUvicorn (ASGI)Frontend UIBootstrap + JSDesktop UIPyQt5 + QWebEngineViewPackagingPyInstaller, NSIS, AppImageConfigPydantic + .env
+| Layer | Technology |
+| --- | --- |
+| Capture Core | Rust + X11 + OpenCV |
+| Web Backend | Python 3.11 + FastAPI |
+| Web Server | Uvicorn (ASGI) |
+| Frontend UI | Bootstrap + JS |
+| Desktop UI | PyQt5 + QWebEngineView |
+| Packaging | PyInstaller, NSIS, AppImage |
+| Config | Pydantic + .env |
 
 ## 📊 Screen Capture Comparison
 
