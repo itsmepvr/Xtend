@@ -1,4 +1,4 @@
-"""Flask routes for handling application selection, streaming, and session management."""
+"""FastAPI routes for handling application selection, streaming, and session management."""
 import queue
 import time
 import asyncio
