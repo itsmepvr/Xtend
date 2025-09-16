@@ -1,4 +1,4 @@
-"""Flask app initialization with logging and CORS configuration."""
+"""FastAPI app initialization with logging and CORS configuration."""
 import logging
 from pathlib import Path
 
