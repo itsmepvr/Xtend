@@ -140,6 +140,46 @@ We welcome contributions! Please follow the branching convention:
 
 - Frames are streamed to the browser in real-time.
 
+======================================
+
+How to run this silently (systemd)
+
+Create a systemd service unit so Xtend runs in the background. Adjust the paths/user as needed.
+
+```ini
+[Unit]
+Description=Xtend - Background Screen Sharing App
+After=network.target
+
+[Service]
+Type=simple
+# Path to the `xtend` executable (adjust to your environment)
+ExecStart=/home/yourusername/.local/bin/xtend --mode web
+WorkingDirectory=/home/yourusername/Xtend
+Restart=on-failure
+# Optional: redirect logs to the journal (remove if you prefer files)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save the file as `/etc/systemd/system/xtend.service` (requires root). Then run:
+
+```bash
+sudo systemctl daemon-reload       # Reload systemd units
+sudo systemctl enable --now xtend  # Enable and start the service immediately
+
+sudo systemctl status xtend        # Show service status
+sudo journalctl -u xtend -f        # Follow logs (press Ctrl+C to exit)
+```
+
+Notes:
+
+- Update `ExecStart` and `WorkingDirectory` to match your install location or virtualenv.
+- Use `sudo systemctl stop xtend` and `sudo systemctl restart xtend` as needed.
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
