@@ -4,6 +4,8 @@
 
 Xtend lets you stream application windows over a local web server, so you can use phones, tablets, or other PCs as extra displays — no cables, no extra apps, just your browser.
 
+Github: [https://github.com/itsmepvr/Xtend](https://github.com/itsmepvr/Xtend)
+
 ---
 
 ## 🚀 Features
@@ -34,7 +36,7 @@ xtend
 
 ---
 
-## 📸 Screenshots (Optional)
+## 📸 Screenshots
 
 ![Xtend](./xtend.png)
 
@@ -52,7 +54,7 @@ xtend
 
 Contributions are welcome!
 
-- Fork the repo
+- Fork the [repo](https://github.com/itsmepvr/Xtend) 
 - Create a feature branch
 - Submit a pull request
 
