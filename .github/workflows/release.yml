@@ -30,7 +30,9 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          # PySide6 6.9 is validated with Python 3.11.  "3.x" can select a
+          # newer interpreter for which that wheel is not published.
+          python-version: "3.11"
 
       - name: Install Python dependencies
         run: |
