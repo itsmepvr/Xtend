@@ -154,7 +154,9 @@ jobs:
 
   build_macos_arm64:
     name: Build macOS Apple Silicon installer
-    runs-on: macos-14
+    # macos-latest is GitHub's supported standard Apple Silicon runner label.
+    # The pinned macos-14 ARM image is not available on every Actions account.
+    runs-on: macos-latest
     env:
       VERSION: ${{ github.ref_name }}
 

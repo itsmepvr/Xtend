@@ -113,7 +113,7 @@ Open your browser at http://127.0.0.1:9999 to view available applications.
 
 ## macOS Apple Silicon installer
 
-Release tags now build `xtend-v*-macos-arm64.dmg` on GitHub's `macos-14`
+Release tags now build `xtend-v*-macos-arm64.dmg` on GitHub's Apple Silicon
 Apple Silicon runner. Open the DMG and drag **Xtend** to **Applications**.
 On first use, grant Xtend **Screen Recording** permission in **System
 Settings → Privacy & Security → Screen Recording**. macOS capture shares the
