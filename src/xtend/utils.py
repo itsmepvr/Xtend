@@ -11,10 +11,8 @@ try:
 except ImportError:
     psutil = None
 
-from xtend.capture import AppCapturer
 import cv2
 import numpy as np
-from Xlib import display, X
 
 def get_open_applications() -> list[str]:
     """Retrieves a list of currently open applications.
@@ -126,7 +124,16 @@ def get_open_applications() -> list[str]:
 
 def get_application_thumbnail(app_name: str) -> str:
     """Get base64 encoded thumbnail for an application window."""
+    # Window thumbnails use the X11 Composite API and are only available on
+    # Linux.  Importing Xlib on macOS would prevent the application from
+    # starting before it can request Screen Recording permission.
+    if platform.system() != "Linux":
+        return None
+
     try:
+        from Xlib import display, X
+        from xtend.capture import AppCapturer
+
         capturer = AppCapturer(app_name)
         window_id = capturer._find_window()
         

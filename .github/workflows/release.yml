@@ -152,9 +152,84 @@ jobs:
             xtend-${{ env.VERSION }}-linux.deb
             xtend-${{ env.VERSION }}-linux.tar.gz
 
+  build_macos_arm64:
+    name: Build macOS Apple Silicon installer
+    runs-on: macos-14
+    env:
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: arm64
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Create macOS icon
+        run: |
+          mkdir -p build/Xtend.iconset
+          for size in 16 32 128 256 512; do
+            sips -z "$size" "$size" src/xtend/resources/icon.png --out "build/Xtend.iconset/icon_${size}x${size}.png"
+            double_size=$((size * 2))
+            sips -z "$double_size" "$double_size" src/xtend/resources/icon.png --out "build/Xtend.iconset/icon_${size}x${size}@2x.png"
+          done
+          iconutil -c icns build/Xtend.iconset -o build/Xtend.icns
+
+      - name: Build native arm64 application bundle
+        run: |
+          pyinstaller --noconfirm --clean --windowed --onedir \
+            --name Xtend \
+            --target-architecture arm64 \
+            --osx-bundle-identifier com.itsmepvr.xtend \
+            --icon build/Xtend.icns \
+            --add-data "src/xtend/static:xtend/static" \
+            --add-data "src/xtend/templates:xtend/templates" \
+            --hidden-import xtend.screen_capture \
+            --collect-all PySide6 \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all starlette \
+            --collect-all jinja2 \
+            --collect-all aiofiles \
+            --collect-all websockets \
+            --collect-all python_multipart \
+            src/xtend/cli.py
+
+      - name: Ad-hoc sign and validate the application bundle
+        run: |
+          codesign --force --deep --sign - dist/Xtend.app
+          codesign --verify --deep --strict --verbose=2 dist/Xtend.app
+          test "$(uname -m)" = arm64
+          file dist/Xtend.app/Contents/MacOS/Xtend | grep -q arm64
+
+      - name: Create installable disk image
+        run: |
+          mkdir -p build/dmg
+          cp -R dist/Xtend.app build/dmg/
+          ln -s /Applications build/dmg/Applications
+          hdiutil create \
+            -volname "Xtend" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            "xtend-${VERSION}-macos-arm64.dmg"
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos_arm64_release
+          path: xtend-${{ env.VERSION }}-macos-arm64.dmg
+
   create_release:
     runs-on: ubuntu-latest
-    needs: [build_linux]
+    needs: [build_linux, build_macos_arm64]
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -163,6 +238,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux_release
+          path: .
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos_arm64_release
           path: .
 
       - name: Create Draft Release
@@ -198,3 +279,11 @@ jobs:
           asset_path: xtend-${{ github.ref_name }}-linux.tar.gz
           asset_name: xtend-${{ github.ref_name }}-linux.tar.gz
           asset_content_type: application/tar+gzip
+
+      - name: Upload macOS Apple Silicon installer
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: xtend-${{ github.ref_name }}-macos-arm64.dmg
+          asset_name: xtend-${{ github.ref_name }}-macos-arm64.dmg
+          asset_content_type: application/x-apple-diskimage

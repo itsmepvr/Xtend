@@ -111,7 +111,19 @@ uvicorn xtend.server:app --host 0.0.0.0 --port 9999 --reload
 
 Open your browser at http://127.0.0.1:9999 to view available applications.
 
-## Building Rust FFI (Required)
+## macOS Apple Silicon installer
+
+Release tags now build `xtend-v*-macos-arm64.dmg` on GitHub's `macos-14`
+Apple Silicon runner. Open the DMG and drag **Xtend** to **Applications**.
+On first use, grant Xtend **Screen Recording** permission in **System
+Settings → Privacy & Security → Screen Recording**. macOS capture shares the
+selected display; per-window capture remains Linux/X11-only.
+
+The release bundle is ad-hoc signed so it can be tested directly. For
+Gatekeeper distribution outside GitHub, sign it with a Developer ID and
+notarize the DMG before publishing.
+
+## Building Rust FFI (Linux only)
 
 ```
 cd app_capturer
