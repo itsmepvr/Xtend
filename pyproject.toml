@@ -40,7 +40,7 @@ dependencies = [
     "pylint (==3.3.6)",
     "pytest (==8.3.5)",
     "python-multipart (==0.0.20)",
-    "python-xlib (==0.33)",
+    "python-xlib (==0.33) ; sys_platform == 'linux'",
     "six (==1.17.0)",
     "sniffio (==1.3.1)",
     "starlette (==0.46.1)",
@@ -49,7 +49,7 @@ dependencies = [
     "uuid (==1.30)",
     "uvicorn (==0.34.0)",
     "websockets (==15.0.1)",
-    "xcffib (==1.7.1)",
+    "xcffib (==1.7.1) ; sys_platform == 'linux'",
     "opencv-python (>=4.11.0.86,<5.0.0.0)",
     "pyside6 (>=6.9.0,<7.0.0)",
     "pydantic-settings (>=2.9.1,<3.0.0)"

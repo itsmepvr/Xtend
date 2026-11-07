@@ -62,7 +62,7 @@ PySide6_Essentials==6.9.0
 pytest==8.3.5
 python-dotenv==1.1.0
 python-multipart==0.0.20
-python-xlib==0.33
+python-xlib==0.33; platform_system == "Linux"
 RapidFuzz==3.13.0
 requests==2.32.3
 requests-toolbelt==1.0.0
@@ -81,6 +81,6 @@ uuid==1.30
 uvicorn==0.34.0
 virtualenv==20.30.0
 websockets==15.0.1
-xcffib==1.7.1
+xcffib==1.7.1; platform_system == "Linux"
 zipp==3.21.0
 zstandard==0.23.0

@@ -2,13 +2,23 @@
 import queue
 import time
 import asyncio
+import platform
 import cv2
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from xtend.app import app, app_sessions, logger, templates
 from xtend.utils import get_open_applications, get_local_ip, generate_session_id
-from xtend.rs_capture import RustCapturer
 from xtend.config import settings
+
+
+def create_capturer(app_name: str = "", capture_mode: str = "full_screen"):
+    """Select the native Linux backend or the portable screen-capture backend."""
+    if platform.system() == "Linux":
+        from xtend.rs_capture import RustCapturer
+        return RustCapturer(app_name, capture_mode)
+
+    from xtend.screen_capture import ScreenCapturer
+    return ScreenCapturer(app_name, capture_mode)
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -83,7 +93,7 @@ async def handle_selection(application: str = Form(...)):
 
     try:
         logger.info("Starting capture for %s with session ID %s", application, session_id)
-        capturer = RustCapturer(application, capture_mode='app')
+        capturer = create_capturer(application, capture_mode='app')
         capturer.start_capture()
 
         app_sessions[session_id] = {
@@ -105,7 +115,7 @@ async def handle_fullscreen_selection():
     session_id = str(generate_session_id(app_sessions))
     try:
         logger.info("Starting full screen capture with session ID %s", session_id)
-        capturer = RustCapturer(capture_mode='full_screen')
+        capturer = create_capturer(capture_mode='full_screen')
         capturer.start_capture()
 
         app_sessions[session_id] = {
